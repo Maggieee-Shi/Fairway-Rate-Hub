@@ -1,0 +1,12 @@
+# Python Virtual Env
+dbenv/
+backend/**/__pycache__/
+backend/**/migrations/
+*.pyc
+
+# Node
+frontend/node_modules/
+*.log
+
+# OS
+.DS_Store
