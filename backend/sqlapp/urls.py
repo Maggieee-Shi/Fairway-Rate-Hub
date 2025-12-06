@@ -63,4 +63,20 @@ urlpatterns = [
     # Chat
     # ---------------------------------------------------
     path("api/chat/<str:role>/", views.chat_handler, name="chat_handler"),
+
+# Instructor analytics
+    path(
+       "api/instructor/analytics/summary/",
+    views.instructor_analytics_summary,
+    name="instructor-analytics-summary",
+
+    ),
+    path(
+        "api/instructor/analytics/problem-pass-rates/",
+        views.instructor_problem_pass_rates,
+    ),
+    path(
+        "api/instructor/analytics/time-leaderboard/",
+        views.instructor_time_leaderboard,
+    ),
 ]

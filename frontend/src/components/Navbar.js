@@ -73,9 +73,6 @@ function Navbar({ user, setUser }) {
               <Link className="navbar-link" to="/admin/dashboard">
                 Admin Panel
               </Link>
-              <Link className="navbar-link" to="/analytics">
-                Analytics
-              </Link>
               <Link className="navbar-link" to="/problems">
                 Problems
               </Link>

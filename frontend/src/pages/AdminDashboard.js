@@ -64,19 +64,6 @@ function AdminDashboard({ user }) {
         </div>
       </div>
 
-      <div style={{ display: "grid", gap: 16, maxWidth: 1200 }}>
-        <div className="card">
-          <div className="card-header">
-            <span className="card-title">Platform Analytics</span>
-          </div>
-          <p className="card-meta">
-            View cohort-level statistics, problem performance, and user engagement.
-          </p>
-          <Link to="/analytics" className="btn btn-outline">
-            Open Analytics
-          </Link>
-        </div>
-
         <div className="card">
           <div className="card-header">
             <span className="card-title">User Management</span>
@@ -169,7 +156,6 @@ function AdminDashboard({ user }) {
           </Link>
         </div>
       </div>
-    </div>
   );
 }
 

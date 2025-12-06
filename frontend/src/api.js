@@ -190,3 +190,43 @@ export async function sendChatMessage(role, message, problemId = null) {
   if (!res.ok) throw new Error("Failed to send chat message");
   return res.json();
 }
+
+// ---------------------------
+// INSTRUCTOR ANALYTICS
+// ---------------------------
+
+export async function fetchInstructorSummary() {
+  const res = await fetch(
+    `${API_BASE}/api/instructor/analytics/summary/`,
+    {
+      ...defaultOptions,
+      method: "GET",
+    }
+  );
+  if (!res.ok) throw new Error("Failed to fetch instructor summary");
+  return res.json();
+}
+
+export async function fetchInstructorProblemPassRates() {
+  const res = await fetch(
+    `${API_BASE}/api/instructor/analytics/problem-pass-rates/`,
+    {
+      ...defaultOptions,
+      method: "GET",
+    }
+  );
+  if (!res.ok) throw new Error("Failed to fetch problem pass rates");
+  return res.json();
+}
+
+export async function fetchInstructorTimeLeaderboard() {
+  const res = await fetch(
+    `${API_BASE}/api/instructor/analytics/time-leaderboard/`,
+    {
+      ...defaultOptions,
+      method: "GET",
+    }
+  );
+  if (!res.ok) throw new Error("Failed to fetch time leaderboard");
+  return res.json();
+}

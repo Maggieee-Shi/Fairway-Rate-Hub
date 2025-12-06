@@ -121,16 +121,17 @@ function App() {
           />
 
           <Route
-            path="/analytics"
-            element={
-              <ProtectedRoute
-                user={user}
-                allowedRoles={["student", "instructor", "admin"]}
-              >
-                <Analytics />
-              </ProtectedRoute>
-            }
-          />
+              path="/analytics"
+              element={
+                <ProtectedRoute
+                  user={user}
+                  allowedRoles={["student", "instructor"]}
+                >
+                  <Analytics user={user} />
+                </ProtectedRoute>
+              }
+            />
+
 
           <Route
             path="/chat/:role"

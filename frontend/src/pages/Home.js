@@ -63,7 +63,6 @@ function Home({ user }) {
             </div>
             <ul style={{ paddingLeft: '20px', fontSize: '0.9rem', lineHeight: '1.8' }}>
               <li>Manage users and roles</li>
-              <li>Platform-wide analytics</li>
               <li>Content management</li>
               <li>System administration</li>
             </ul>
