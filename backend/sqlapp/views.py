@@ -515,23 +515,24 @@ def submit_solution(request, problem_id):
         return JsonResponse({"detail": "Invalid JSON"}, status=400)
 
     sql_text = body.get("sql_text", "").strip()
-
     if not sql_text:
         return JsonResponse({"detail": "sql_text is required"}, status=400)
 
-    # Get user_id from session
-    user_id = request.session.get('user_id', 1)
-    
-    status = "executed"
+    # Get user_id from session (fallback to 1 for testing)
+    user_id = request.session.get("user_id", 1)
+
+    status = "error"   # default if something blows up
     score = 0
     columns = []
     rows = []
     messages = []
     runtime_ms = 0
 
+    # ------------------------------
+    # 1) Run student's query
+    # ------------------------------
     try:
         with connection.cursor() as cursor:
-            # Execute the user's SQL query
             import time
             start_time = time.time()
             cursor.execute(sql_text)
@@ -543,15 +544,43 @@ def submit_solution(request, problem_id):
                 rows = cursor.fetchall()
 
         messages.append("Query executed successfully.")
-        status = "success"
-        score = 100
+        # we don't set status yet – we’ll decide after grading
 
     except Exception as e:
         status = "error"
         score = 0
         messages.append(str(e))
+    else:
+        # ------------------------------
+        # 2) Grade against canonical result
+        # ------------------------------
+        try:
+            canon_cols, canon_rows = _run_canonical_query(problem_id)
+            is_correct, detail_msg = _compare_result_sets(
+                columns, rows, canon_cols, canon_rows
+            )
+            messages.append(detail_msg)
 
-    # Insert into Submission table
+            if is_correct is True:
+                status = "accepted"
+                score = 100
+            elif is_correct is False:
+                status = "wrong_answer"
+                score = 0
+            else:
+                # No canonical configured – treat as successfully executed only
+                status = "accepted"
+                score = 100
+                # but message already explains it's not truly auto-graded
+        except Exception as e:
+            # If autograder itself fails, we still return execution result
+            status = "error"
+            score = 0
+            messages.append(f"Autograder error: {e}")
+
+    # ------------------------------
+    # 3) Insert into Submission table
+    # ------------------------------
     submission_id = None
     try:
         with connection.cursor() as cursor:
@@ -563,27 +592,37 @@ def submit_solution(request, problem_id):
                 (Submission_ID, Status, Score, Runtime_ms, Canonical_sql, Gpt_sql, User_ID, Problem_ID, Created_at)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
             """
-            cursor.execute(insert_submission_sql, [
-                submission_id,
-                status,
-                score,
-                runtime_ms,
-                sql_text,
-                None,
-                user_id,
-                problem_id
-            ])
+            # NOTE: we are storing the student's SQL in Canonical_sql column,
+            # because that's what your existing schema calls it.
+            cursor.execute(
+                insert_submission_sql,
+                [
+                    submission_id,
+                    status,
+                    score,
+                    runtime_ms,
+                    sql_text,   # student's SQL
+                    None,       # Gpt_sql
+                    user_id,
+                    problem_id,
+                ],
+            )
 
         connection.commit()
 
     except Exception as e:
         print(f"Error inserting submission: {e}")
         connection.rollback()
-        messages.append(f"Warning: Submission recorded but database update failed: {str(e)}")
+        messages.append(
+            f"Warning: Submission was run but could not be saved: {str(e)}"
+        )
 
+    # ------------------------------
+    # 4) Response back to frontend
+    # ------------------------------
     response = {
         "status": status,
-        "score": score,
+        "score": float(score),
         "columns": columns,
         "rows": rows,
         "messages": messages,
@@ -592,6 +631,7 @@ def submit_solution(request, problem_id):
     }
 
     return JsonResponse(response)
+
 
 
 
@@ -1127,6 +1167,90 @@ def instructor_time_leaderboard(request):
         traceback.print_exc()
         return JsonResponse({"results": []}, status=500)
 
+def _get_problem_context(problem_id):
+    """
+    Fetch basic context for a single problem so the chat bot can see
+    the statement, difficulty, and dataset.
+    """
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT 
+                    p.Problem_ID,
+                    p.Title,
+                    p.Difficulty,
+                    d.Title AS dataset_title,
+                    ps.Statement
+                FROM Problem p
+                LEFT JOIN Dataset d 
+                    ON p.Dataset_ID = d.Dataset_ID
+                LEFT JOIN ProblemStatement ps 
+                    ON ps.Problem_ID = p.Problem_ID
+                WHERE p.Problem_ID = %s
+                """,
+                [problem_id],
+            )
+            row = cursor.fetchone()
+    except Exception as e:
+        print("_get_problem_context error:", e)
+        import traceback
+        traceback.print_exc()
+        return None
+
+    if not row:
+        return None
+
+    return {
+        "id": row[0],
+        "title": row[1],
+        "difficulty": row[2],
+        "dataset_title": row[3],
+        "statement": row[4],
+    }
+
+
+def _get_problem_history_for_user(user_id, problem_id, limit=3):
+    """
+    Fetch this student's recent submissions for a specific problem.
+    Used to give the chat assistant visibility into what they've tried.
+    """
+    sql = """
+        SELECT 
+            s.Submission_ID,
+            s.Status,
+            s.Score,
+            s.Runtime_ms,
+            s.Created_at,
+            s.Canonical_sql
+        FROM Submission s
+        WHERE s.User_ID = %s
+          AND s.Problem_ID = %s
+        ORDER BY s.Created_at DESC, s.Submission_ID DESC
+        LIMIT %s
+    """
+
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(sql, [user_id, problem_id, limit])
+            rows = cursor.fetchall()
+    except Exception as e:
+        print("_get_problem_history_for_user error:", e)
+        import traceback
+        traceback.print_exc()
+        return []
+
+    results = []
+    for row in rows:
+        results.append({
+            "submission_id": row[0],
+            "status": row[1],
+            "score": float(row[2]) if row[2] is not None else 0.0,
+            "runtime_ms": row[3],
+            "created_at": row[4].strftime("%Y-%m-%d %H:%M:%S") if row[4] else None,
+            "submitted_sql": row[5],
+        })
+    return results
 
 # ============================================================
 # AI Chat API
@@ -1136,10 +1260,11 @@ def instructor_time_leaderboard(request):
 def chat_handler(request, role):
     """
     role = "student" | "instructor"
-    Front-end sends: { "message": "..." }
+    Front-end sends: { "message": "...", optional "problem_id": <id> }
 
-    Now supports tool-calling so the model can fetch user-specific data
-    like "my latest submissions".
+    Now supports:
+      - tools for pulling analytics/progress
+      - problem-aware tutoring when a problem_id is provided
     """
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])
@@ -1147,6 +1272,12 @@ def chat_handler(request, role):
     try:
         body = json.loads(request.body)
         msg = body.get("message", "")
+        # from ProblemDetail chat we expect problem_id in the payload
+        raw_problem_id = (
+            body.get("problem_id")
+            or body.get("problemId")
+            or body.get("problemID")
+        )
     except Exception as e:
         print(f"JSON parse error: {e}")
         return JsonResponse({"error": "Invalid JSON"}, status=400)
@@ -1154,12 +1285,35 @@ def chat_handler(request, role):
     if not msg:
         return JsonResponse({"error": "message is required"}, status=400)
 
-    # Require login so "my submissions" is well-defined
+    # Require login so "my submissions" etc. is well-defined
     user_id = request.session.get("user_id")
     if not user_id:
         return JsonResponse({"error": "Not authenticated"}, status=401)
 
-       # 1) Define tools the model is allowed to call
+    # Try to coerce problem_id to int (optional)
+    problem_id = None
+    if raw_problem_id not in (None, "", 0):
+        try:
+            problem_id = int(raw_problem_id)
+        except (TypeError, ValueError):
+            problem_id = None
+
+    # Optional: fetch problem context + student's recent attempts
+    problem_context = None
+    problem_history = []
+    if problem_id is not None:
+        try:
+            problem_context = _get_problem_context(problem_id)
+            if problem_context:
+                problem_history = _get_problem_history_for_user(
+                    user_id, problem_id, limit=3
+                )
+        except Exception as e:
+            print(f"Error getting problem context/history: {e}")
+            import traceback
+            traceback.print_exc()
+
+    # 1) Define tools the model is allowed to call
     base_tools = [
         {
             "type": "function",
@@ -1282,49 +1436,92 @@ def chat_handler(request, role):
 
     tools = base_tools + instructor_tools
 
-
-
-    # 2) Base messages: describe the platform + role
-    system_msg = (
-        "You are a helpful assistant for a SQL learning platform called SQL Master Class. "
-        "The user is logged in. "
-        f"The user is acting as role: {role}. "
-        "You can answer general SQL questions. "
-        "If the user asks about their own activity, submissions, scores, or progress, "
-        "you should call the appropriate tool instead of guessing."
-    )
-
-    messages = [
-        {"role": "system", "content": system_msg},
-        {"role": "user", "content": msg},
+    # 2) Build system + context messages
+    system_parts = [
+        "You are a helpful assistant for a SQL learning platform called SQL Master Class.",
+        f"The user is logged in with role: {role}.",
     ]
 
+    if role == "student":
+        system_parts.append(
+            "Act as a SQL tutor. Explain concepts clearly and guide the student "
+            "step-by-step. Prefer hints and reasoning before giving the full "
+            "final query. If the student explicitly asks for the full solution "
+            "(e.g., they click a button labeled 'how to solve this problem'), "
+            "you may provide a complete SQL answer after a short explanation."
+        )
+    else:
+        system_parts.append(
+            "The user is an instructor. Help interpret analytics and cohort performance, "
+            "and answer SQL questions accurately."
+        )
+
+    if problem_context:
+        system_parts.append(
+            "The student is currently working on the specific problem described below. "
+            "Use its schema and statement when answering. Do not invent tables or "
+            "columns that are not in the problem."
+        )
+
+    system_msg = "\n\n".join(system_parts)
+
+    messages = [{"role": "system", "content": system_msg}]
+
+    if problem_context:
+        context_text = (
+            f"Current problem context:\n"
+            f"- Problem ID: {problem_context['id']}\n"
+            f"- Title: {problem_context['title']}\n"
+            f"- Difficulty: {problem_context['difficulty']}\n"
+            f"- Dataset: {problem_context['dataset_title'] or 'N/A'}\n\n"
+            f"Problem statement:\n{problem_context['statement'] or ''}"
+        )
+        messages.append({"role": "system", "content": context_text})
+
+    if problem_history:
+        history_lines = [
+            "Recent attempts by this student on this problem (most recent first):"
+        ]
+        for h in problem_history:
+            history_lines.append(
+                f"- [{h['created_at']}] status={h['status']}, "
+                f"score={h['score']}\n"
+                f"  SQL:\n{h['submitted_sql']}\n"
+            )
+        messages.append({"role": "system", "content": "\n".join(history_lines)})
+
+    messages.append({"role": "user", "content": msg})
+
+    # 3) First call: let the model decide whether to call a tool
     try:
-        # 3) First call: let the model decide whether to call a tool
         first_response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=messages,
             tools=tools,
-            tool_choice="auto",  # let model decide
+            tool_choice="auto",
         )
     except Exception as e:
         print(f"OpenAI API error (first call): {str(e)}")
         import traceback
         traceback.print_exc()
-        return JsonResponse({
-            "reply": f"(AI error) {str(e)}",
-            "role": role,
-        }, status=500)
+        return JsonResponse(
+            {
+                "reply": f"(AI error) {str(e)}",
+                "role": role,
+            },
+            status=500,
+        )
 
     assistant_msg = first_response.choices[0].message
 
     # If the model decided to call a tool, execute it
     if assistant_msg.tool_calls:
-        # Append the assistant's tool call message to conversation
-        messages.append({
-            "role": assistant_msg.role,
-            "tool_calls": [tc.model_dump() for tc in assistant_msg.tool_calls],
-        })
+        messages.append(
+            {
+                "role": assistant_msg.role,
+                "tool_calls": [tc.model_dump() for tc in assistant_msg.tool_calls],
+            }
+        )
 
         tool_outputs = {}
 
@@ -1349,31 +1546,37 @@ def chat_handler(request, role):
 
                 tool_outputs[tool_name] = data
 
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": tool_call.id,
-                    "name": tool_name,
-                    "content": json.dumps(data),
-                })
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tool_call.id,
+                        "name": tool_name,
+                        "content": json.dumps(data),
+                    }
+                )
 
             elif tool_name == "get_leaderboard_rank":
                 try:
                     data = _get_leaderboard_rank_for_user(user_id)
                     if data is None:
-                        data = {"error": "No leaderboard entry found for this user."}
+                        data = {
+                            "error": "No leaderboard entry found for this user."
+                        }
                 except Exception as e:
                     print(f"Error in _get_leaderboard_rank_for_user: {e}")
                     data = {"error": "Failed to fetch leaderboard rank"}
 
                 tool_outputs[tool_name] = data
 
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": tool_call.id,
-                    "name": tool_name,
-                    "content": json.dumps(data),
-                })
-                
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tool_call.id,
+                        "name": tool_name,
+                        "content": json.dumps(data),
+                    }
+                )
+
             elif tool_name == "get_problem_pass_rates":
                 limit = args.get("limit", 50)
                 limit = max(1, min(limit, 100))
@@ -1384,12 +1587,14 @@ def chat_handler(request, role):
                     data = {"error": "Failed to fetch problem pass rates"}
 
                 tool_outputs[tool_name] = data
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": tool_call.id,
-                    "name": tool_name,
-                    "content": json.dumps(data),
-                })
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tool_call.id,
+                        "name": tool_name,
+                        "content": json.dumps(data),
+                    }
+                )
 
             elif tool_name == "get_student_time_leaderboard":
                 limit = args.get("limit", 20)
@@ -1398,15 +1603,19 @@ def chat_handler(request, role):
                     data = _get_student_time_leaderboard(limit=limit)
                 except Exception as e:
                     print(f"Error in _get_student_time_leaderboard: {e}")
-                    data = {"error": "Failed to fetch student time leaderboard"}
+                    data = {
+                        "error": "Failed to fetch student time leaderboard"
+                    }
 
                 tool_outputs[tool_name] = data
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": tool_call.id,
-                    "name": tool_name,
-                    "content": json.dumps(data),
-                })
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tool_call.id,
+                        "name": tool_name,
+                        "content": json.dumps(data),
+                    }
+                )
 
             elif tool_name == "get_topic_performance":
                 topic = args.get("topic", "").strip()
@@ -1417,22 +1626,24 @@ def chat_handler(request, role):
                     data = {"error": "Topic keyword is required."}
                 else:
                     try:
-                        data = _get_topic_performance(topic_keyword=topic, limit=limit)
+                        data = _get_topic_performance(
+                            topic_keyword=topic, limit=limit
+                        )
                     except Exception as e:
                         print(f"Error in _get_topic_performance: {e}")
                         data = {"error": "Failed to fetch topic performance"}
 
                 tool_outputs[tool_name] = data
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": tool_call.id,
-                    "name": tool_name,
-                    "content": json.dumps(data),
-                })
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tool_call.id,
+                        "name": tool_name,
+                        "content": json.dumps(data),
+                    }
+                )
 
-
-
-        # 4) Second call: ask the model to answer the student using the tool result.
+        # 4) Second call: ask the model to answer using the tool result.
         try:
             final_response = client.chat.completions.create(
                 model="gpt-4o-mini",
@@ -1442,47 +1653,54 @@ def chat_handler(request, role):
             print(f"OpenAI API error (second call): {str(e)}")
             import traceback
             traceback.print_exc()
-            # If second call fails, at least return raw tool data
-            return JsonResponse({
-                "reply": "I retrieved your data but failed to generate a summary.",
-                "role": role,
-                "tool_outputs": tool_outputs,
-            }, status=500)
+            return JsonResponse(
+                {
+                    "reply": "I retrieved your data but failed to generate a summary.",
+                    "role": role,
+                    "tool_outputs": tool_outputs,
+                },
+                status=500,
+            )
 
         reply_text = final_response.choices[0].message.content or ""
 
-        # still try to extract SQL from reply
         sql_used = None
         if "```sql" in reply_text:
             import re
+
             match = re.search(r"```sql(.*?)```", reply_text, re.S)
             if match:
                 sql_used = match.group(1).strip()
 
-        return JsonResponse({
-            "reply": reply_text,
-            "role": role,
-            "sql_used": sql_used,
-        })
+        return JsonResponse(
+            {
+                "reply": reply_text,
+                "role": role,
+                "sql_used": sql_used,
+            }
+        )
 
     # -------------------------------------------------------
     # No tool call: just a normal chat reply
     # -------------------------------------------------------
     reply_text = assistant_msg.content or ""
 
-    # Optional: still extract SQL if present
     sql_used = None
     if "```sql" in reply_text:
         import re
+
         match = re.search(r"```sql(.*?)```", reply_text, re.S)
         if match:
             sql_used = match.group(1).strip()
 
-    return JsonResponse({
-        "reply": reply_text,
-        "role": role,
-        "sql_used": sql_used,
-    })
+    return JsonResponse(
+        {
+            "reply": reply_text,
+            "role": role,
+            "sql_used": sql_used,
+        }
+    )
+
 # ============================================================
 # Instructor Analytics Helpers
 # ============================================================
@@ -1700,8 +1918,6 @@ def instructor_analytics_summary(request):
         })
 
 
-
-
 def instructor_problem_pass_rates(request):
     """
     GET /api/instructor/analytics/problem-pass-rates/
@@ -1730,3 +1946,166 @@ def instructor_time_leaderboard(request):
         import traceback
         traceback.print_exc()
         return JsonResponse({"results": []})
+# ============================================================
+# Autograder helpers
+# ============================================================
+
+# Canonical solutions for each problem ID.
+# You can tweak these as you like – they’re written for the
+# sample datasets we created earlier.
+CANONICAL_SQL_BY_PROBLEM = {
+    1: """
+        SELECT email
+        FROM Person
+        GROUP BY email
+        HAVING COUNT(*) > 1
+        ORDER BY email
+    """,
+
+    2: """
+        SELECT IFNULL(
+            (SELECT DISTINCT salary
+             FROM Employee
+             ORDER BY salary DESC
+             LIMIT 1 OFFSET 1),
+            NULL
+        ) AS SecondHighestSalary
+    """,
+
+    3: """
+        SELECT d.name AS Department,
+               e.name AS Employee,
+               e.salary AS Salary
+        FROM Employee e
+        JOIN Department d ON e.departmentId = d.id
+        WHERE (
+            SELECT COUNT(DISTINCT e2.salary)
+            FROM Employee e2
+            WHERE e2.departmentId = e.departmentId
+              AND e2.salary >= e.salary
+        ) <= 3
+        ORDER BY d.name, e.salary DESC, e.name
+    """,
+
+    4: """
+        SELECT DISTINCT l1.num AS ConsecutiveNums
+        FROM Logs l1
+        JOIN Logs l2
+          ON l1.id = l2.id - 1
+         AND l1.num = l2.num
+        ORDER BY ConsecutiveNums
+    """,
+
+    5: """
+        SELECT
+            score AS Score,
+            DENSE_RANK() OVER (ORDER BY score DESC) AS `Rank`
+        FROM Scores
+        ORDER BY Score DESC
+    """,
+
+    6: """
+        SELECT
+            c.customerId,
+            c.name,
+            COALESCE(SUM(oi.amount), 0) AS total_revenue
+        FROM Customers c
+        LEFT JOIN Orders o ON c.customerId = o.customerId
+        LEFT JOIN OrderItems oi ON o.orderId = oi.orderId
+        GROUP BY c.customerId, c.name
+        ORDER BY total_revenue DESC, c.customerId
+    """,
+
+    7: """
+        SELECT
+            e.employee_id,
+            e.name        AS employee_name,
+            m.name        AS manager_name
+        FROM Employee e
+        LEFT JOIN Employee m
+               ON e.manager_id = m.employee_id
+        ORDER BY e.employee_id
+    """,
+
+    8: """
+        SELECT
+            month,
+            amount,
+            ROUND(
+                (amount
+                 - LAG(amount) OVER (ORDER BY month))
+                / NULLIF(LAG(amount) OVER (ORDER BY month), 0) * 100,
+                2
+            ) AS mom_change_pct
+        FROM Sales
+        ORDER BY month
+    """,
+
+    9: """
+        SELECT
+            c.id   AS customer_id,
+            c.name,
+            COALESCE(SUM(oi.price * oi.quantity), 0) AS total_value
+        FROM Customer c
+        LEFT JOIN Orders o ON c.id = o.customerId
+        LEFT JOIN OrderItems oi ON o.id = oi.orderId
+        GROUP BY c.id, c.name
+        ORDER BY total_value DESC, c.id
+    """,
+
+    10: """
+        SELECT
+            id,
+            transactionDate,
+            amount,
+            SUM(amount) OVER (ORDER BY transactionDate, id) AS running_total
+        FROM Transactions
+        ORDER BY transactionDate, id
+    """,
+}
+
+
+def _run_canonical_query(problem_id):
+    """
+    Run the canonical SQL for this problem and return (columns, rows).
+    Returns (None, None) if no canonical query is configured.
+    """
+    canonical_sql = CANONICAL_SQL_BY_PROBLEM.get(int(problem_id))
+    if not canonical_sql:
+        return None, None
+
+    with connection.cursor() as cursor:
+        cursor.execute(canonical_sql)
+        if cursor.description:
+            cols = [c[0] for c in cursor.description]
+            rows = cursor.fetchall()
+        else:
+            cols = []
+            rows = []
+    return cols, rows
+
+
+def _compare_result_sets(user_cols, user_rows, canon_cols, canon_rows):
+    """
+    Compare two result sets ignoring row order.
+    Returns (is_correct: bool, detail_message: str).
+    """
+    if canon_cols is None:
+        return None, "No canonical solution configured for this problem."
+
+    # Check column count first
+    if len(user_cols) != len(canon_cols):
+        return False, f"Expected {len(canon_cols)} column(s), got {len(user_cols)}."
+
+    # Normalize rows as sorted tuples (order-insensitive comparison)
+    def normalize(rows):
+        return sorted([tuple(r) for r in rows])
+
+    if normalize(user_rows) == normalize(canon_rows):
+        return True, "Result matches the expected output. ✅"
+    else:
+        return False, (
+            f"Output does not match the expected result. "
+            f"Expected {len(canon_rows)} row(s), got {len(user_rows)} row(s), "
+            "or some row values differ."
+        )
