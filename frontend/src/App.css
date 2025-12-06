@@ -20,7 +20,17 @@
 .navbar a:visited {
   color: #f9fafb;
 }
+.navbar-logout{
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #5f5d5da1; 
+  color: #ffffff;
+  border: none;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
 
+}
 .navbar-inner {
   max-width: 1100px;
   margin: 0 auto;
@@ -60,14 +70,14 @@
 }
 
 .navbar-link:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(78, 75, 75, 0.148);
   color: #ffffff;
   transform: translateY(-1px);
 }
 
 .navbar-user {
   padding: 6px 12px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(94, 92, 92, 0.475);
   border-radius: 999px;
   font-size: 0.85rem;
   font-weight: 500;
@@ -472,4 +482,49 @@
 .text-muted {
   color: #6b7280;
   font-size: 0.8rem;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal {
+  background: #111827;
+  color: #f9fafb;
+  padding: 20px;
+  border-radius: 12px;
+  max-width: 720px;
+  width: 90%;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+.sql-block {
+  margin-top: 12px;
+  max-height: 320px;
+  overflow: auto;
+  font-family: ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+  background: #020617;
+  padding: 10px;
+  border-radius: 8px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: #38bdf8;
+  cursor: pointer;
+  padding: 0;
+  font-size: 0.9rem;
+}
+.btn-link:hover {
+  text-decoration: underline;
 }

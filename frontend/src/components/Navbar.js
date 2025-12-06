@@ -88,7 +88,7 @@ function Navbar({ user, setUser }) {
                 {user.name}
               </span>
               <button 
-                className="btn btn-sm btn-outline"
+                className="navbar-logout"
                 onClick={handleLogout}
               >
                 Logout

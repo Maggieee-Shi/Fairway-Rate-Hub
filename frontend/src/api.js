@@ -1,5 +1,4 @@
-const API_BASE = "http://localhost:8000"; 
-
+const API_BASE = "http://localhost:8000";
 
 // Helper: include cookies if you use session auth
 const defaultOptions = {
@@ -125,6 +124,7 @@ export async function submitSolution(problemId, sqlText) {
 // ---------------------------
 // ANALYTICS
 // ---------------------------
+
 export async function fetchStudentLastSubmissions() {
   const res = await fetch(
     `${API_BASE}/api/student/analytics/last-submissions/`,
@@ -176,11 +176,16 @@ export async function fetchActiveProblems() {
 // ---------------------------
 // CHAT
 // ---------------------------
-export async function sendChatMessage(role, message) {
+export async function sendChatMessage(role, message, problemId = null) {
+  const body = { message };
+  if (problemId != null) {
+    body.problem_id = problemId;
+  }
+
   const res = await fetch(`${API_BASE}/api/chat/${role}/`, {
     ...defaultOptions,
     method: "POST",
-    body: JSON.stringify({ message }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error("Failed to send chat message");
   return res.json();

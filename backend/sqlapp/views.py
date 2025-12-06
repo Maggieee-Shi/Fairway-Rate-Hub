@@ -600,53 +600,110 @@ def submit_solution(request, problem_id):
 # /api/student/analytics/last-submissions/
 # /api/student/analytics/time-on-task/
 # ============================================================
+# ============================================================
+# Analytics helpers + APIs
+# ============================================================
+
+def _get_last_submissions_for_user(user_id, limit=10):
+    """
+    Return the last `limit` submissions for this user, including their SQL,
+    used by both analytics API and chat tools.
+    """
+    sql = """
+        SELECT 
+            s.Submission_ID,
+            s.Problem_ID,
+            p.Title AS problem_title,
+            s.Status,
+            s.Score,
+            s.Runtime_ms,
+            s.Created_at,
+            s.Canonical_sql,  -- student's submitted SQL
+            s.Gpt_sql         -- optional GPT-generated SQL
+        FROM Submission s
+        LEFT JOIN Problem p ON s.Problem_ID = p.Problem_ID
+        WHERE s.User_ID = %s
+        ORDER BY s.Created_at DESC, s.Submission_ID DESC
+        LIMIT %s
+    """
+
+    with connection.cursor() as cursor:
+        cursor.execute(sql, [user_id, limit])
+        rows = cursor.fetchall()
+
+    results = []
+    for row in rows:
+        results.append({
+            "submission_id": row[0],
+            "problem_id": row[1],
+            "problem_title": row[2],
+            "status": row[3],
+            "score": float(row[4]) if row[4] is not None else 0.0,
+            "runtime_ms": row[5],
+            "created_at": row[6].strftime("%Y-%m-%d %H:%M:%S") if row[6] else None,
+            "submitted_sql": row[7],
+            "gpt_sql": row[8],
+        })
+    return results
+
+
 def analytics_last_submissions(request):
     """
-    Fetch last 10 submissions using SubmissionHistory view
+    GET /api/student/analytics/last-submissions/
+    Returns last 10 submissions for the logged-in user, including their SQL.
     """
     user_id = request.session.get('user_id', 1)
 
-    sql = """
-        SELECT 
-            sh.Submission_ID,
-            sh.Problem_ID,
-            sh.Problem_Title,
-            sh.Status,
-            sh.Score,
-            sh.Runtime_ms,
-            sh.Created_at
-        FROM SubmissionHistory sh
-        WHERE sh.User_ID = %s
-        ORDER BY sh.Created_at DESC
-        LIMIT 10
-    """
-
     try:
-        with connection.cursor() as cursor:
-            cursor.execute(sql, [user_id])
-            rows = cursor.fetchall()
-
-        results = [
-            {
-                "submission_id": row[0],
-                "problem_id": row[1],
-                "problem_title": row[2],
-                "status": row[3],
-                "score": float(row[4]) if row[4] else 0,
-                "runtime_ms": row[5],
-                "created_at": row[6].strftime("%Y-%m-%d %H:%M:%S") if row[6] else None,
-            }
-            for row in rows
-        ]
-
+        results = _get_last_submissions_for_user(user_id, limit=10)
         return JsonResponse({"results": results})
-
     except Exception as e:
         print(f"Error fetching submissions: {e}")
         import traceback
         traceback.print_exc()
         return JsonResponse({"results": []})
 
+def _get_leaderboard(limit=20):
+    """
+    Aggregate leaderboard from SubmissionHistory:
+    - total_score: SUM of all scores
+    - problems_solved: count of DISTINCT accepted problems
+    - rank: by total_score DESC
+    """
+    sql = """
+        WITH UserScores AS (
+            SELECT 
+                sh.User_ID,
+                sh.User_Name,
+                SUM(COALESCE(sh.Score, 0)) AS total_score,
+                COUNT(DISTINCT CASE WHEN sh.Status = 'accepted' THEN sh.Problem_ID END) AS problems_solved
+            FROM SubmissionHistory sh
+            GROUP BY sh.User_ID, sh.User_Name
+        )
+        SELECT
+            User_ID,
+            User_Name,
+            total_score,
+            problems_solved,
+            RANK() OVER (ORDER BY total_score DESC) AS user_rank
+        FROM UserScores
+        ORDER BY user_rank ASC
+        LIMIT %s
+    """
+    with connection.cursor() as cursor:
+        cursor.execute(sql, [limit])
+        rows = cursor.fetchall()
+
+    return [
+        {
+            "user_id": row[0],
+            "user_name": row[1],
+            "total_score": float(row[2]) if row[2] is not None else 0.0,
+            "problems_solved": int(row[3] or 0),
+            "rank": int(row[4]),
+        }
+        for row in rows
+    ]
 
 def analytics_time_on_task(request):
     """
@@ -747,44 +804,56 @@ def analytics_time_on_task(request):
         traceback.print_exc()
         return JsonResponse({"results": []})
 
+def _get_leaderboard_rank_for_user(user_id):
+    """
+    Return this user's leaderboard entry:
+    rank, score, problems solved, and total users on leaderboard.
+    """
+    with connection.cursor() as cursor:
+        # Get this user's leaderboard row
+        cursor.execute("""
+            SELECT 
+                le.User_ID,
+                u.Name AS user_name,
+                le.Total_Score,
+                le.Problems_Solved,
+                le.Rank
+            FROM LeaderboardEntry le
+            LEFT JOIN User u ON le.User_ID = u.User_ID
+            WHERE le.User_ID = %s
+        """, [user_id])
+        row = cursor.fetchone()
+
+        if not row:
+            return None
+
+        # Get total number of entries in leaderboard
+        cursor.execute("SELECT COUNT(*) FROM LeaderboardEntry")
+        total_count = cursor.fetchone()[0] or 0
+
+    return {
+        "user_id": row[0],
+        "user_name": row[1],
+        "total_score": float(row[2]) if row[2] else 0,
+        "problems_solved": row[3],
+        "rank": row[4],
+        "total_users": total_count,
+    }
+
 
 def analytics_leaderboard(request):
     """
-    Get leaderboard data from LeaderboardEntry table
+    GET /api/student/analytics/leaderboard/
+    Returns aggregated leaderboard data using SubmissionHistory:
+    - user_id, user_name, total_score, problems_solved, rank
     """
-    sql = """
-        SELECT 
-            le.User_ID,
-            u.Name as user_name,
-            le.Total_Score,
-            le.Problems_Solved,
-            le.Rank
-        FROM LeaderboardEntry le
-        LEFT JOIN User u ON le.User_ID = u.User_ID
-        ORDER BY le.Rank ASC
-        LIMIT 20
-    """
-
     try:
-        with connection.cursor() as cursor:
-            cursor.execute(sql)
-            rows = cursor.fetchall()
-
-        results = [
-            {
-                "user_id": row[0],
-                "user_name": row[1],
-                "total_score": float(row[2]) if row[2] else 0,
-                "problems_solved": row[3],
-                "rank": row[4],
-            }
-            for row in rows
-        ]
-
+        results = _get_leaderboard(limit=20)
         return JsonResponse({"results": results})
-
     except Exception as e:
         print(f"Error fetching leaderboard: {e}")
+        import traceback
+        traceback.print_exc()
         return JsonResponse({"results": []})
 
 
@@ -843,8 +912,10 @@ def chat_handler(request, role):
     """
     role = "student" | "instructor"
     Front-end sends: { "message": "..." }
-    """
 
+    Now supports tool-calling so the model can fetch user-specific data
+    like "my latest submissions".
+    """
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])
 
@@ -858,24 +929,81 @@ def chat_handler(request, role):
     if not msg:
         return JsonResponse({"error": "message is required"}, status=400)
 
-    print(f"Received message: {msg}")
-    print(f"Role: {role}")
+    # Require login so "my submissions" is well-defined
+    user_id = request.session.get("user_id")
+    if not user_id:
+        return JsonResponse({"error": "Not authenticated"}, status=401)
 
-    # ---- GPT CALL ----
+    # 1) Define tools the model is allowed to call
+    tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_last_submissions",
+            "description": (
+                "Get the logged-in student's most recent submissions. "
+                "Use this when the user asks about their latest submission(s), "
+                "recent attempts, or progress on problems."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "limit": {
+                        "type": "integer",
+                        "description": "How many recent submissions to fetch (default 10).",
+                    }
+                },
+                "required": [],
+                "additionalProperties": False,
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_leaderboard_rank",
+            "description": (
+                "Get the current leaderboard entry for the logged-in user, "
+                "including their rank, total score, and number of problems solved. "
+                "Use this when the user asks about their rank, position on the "
+                "leaderboard, or how they compare to others."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": False,
+            },
+        },
+    },
+]
+
+
+    # 2) Base messages: describe the platform + role
+    system_msg = (
+        "You are a helpful assistant for a SQL learning platform called SQL Master Class. "
+        "The user is logged in. "
+        f"The user is acting as role: {role}. "
+        "You can answer general SQL questions. "
+        "If the user asks about their own activity, submissions, scores, or progress, "
+        "you should call the appropriate tool instead of guessing."
+    )
+
+    messages = [
+        {"role": "system", "content": system_msg},
+        {"role": "user", "content": msg},
+    ]
+
     try:
-        print("Calling OpenAI API...")
-        response = client.chat.completions.create(
+        # 3) First call: let the model decide whether to call a tool
+        first_response = client.chat.completions.create(
             model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": f"You are a helpful SQL assistant for role: {role}."},
-                {"role": "user", "content": msg}
-            ]
+            messages=messages,
+            tools=tools,
+            tool_choice="auto",  # let model decide
         )
-        reply_text = response.choices[0].message.content
-        print(f"Got response: {reply_text[:100]}")
-
     except Exception as e:
-        print(f"OpenAI API error: {str(e)}")
+        print(f"OpenAI API error (first call): {str(e)}")
         import traceback
         traceback.print_exc()
         return JsonResponse({
@@ -883,7 +1011,104 @@ def chat_handler(request, role):
             "role": role,
         }, status=500)
 
-    # Extract SQL if model generates it
+    assistant_msg = first_response.choices[0].message
+
+    # If the model decided to call a tool, execute it
+    if assistant_msg.tool_calls:
+        # Append the assistant's tool call message to conversation
+        messages.append({
+            "role": assistant_msg.role,
+            "tool_calls": [tc.model_dump() for tc in assistant_msg.tool_calls],
+        })
+
+        tool_outputs = {}
+
+        for tool_call in assistant_msg.tool_calls:
+            tool_name = tool_call.function.name
+            args_str = tool_call.function.arguments or "{}"
+
+            try:
+                args = json.loads(args_str)
+            except json.JSONDecodeError:
+                args = {}
+
+            if tool_name == "get_last_submissions":
+                limit = args.get("limit", 10)
+                limit = max(1, min(limit, 50))
+
+                try:
+                    data = _get_last_submissions_for_user(user_id, limit=limit)
+                except Exception as e:
+                    print(f"Error in _get_last_submissions_for_user: {e}")
+                    data = {"error": "Failed to fetch submissions"}
+
+                tool_outputs[tool_name] = data
+
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "name": tool_name,
+                    "content": json.dumps(data),
+                })
+
+            elif tool_name == "get_leaderboard_rank":
+                try:
+                    data = _get_leaderboard_rank_for_user(user_id)
+                    if data is None:
+                        data = {"error": "No leaderboard entry found for this user."}
+                except Exception as e:
+                    print(f"Error in _get_leaderboard_rank_for_user: {e}")
+                    data = {"error": "Failed to fetch leaderboard rank"}
+
+                tool_outputs[tool_name] = data
+
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "name": tool_name,
+                    "content": json.dumps(data),
+                })
+
+
+        # 4) Second call: ask the model to answer the student using the tool result.
+        try:
+            final_response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=messages,
+            )
+        except Exception as e:
+            print(f"OpenAI API error (second call): {str(e)}")
+            import traceback
+            traceback.print_exc()
+            # If second call fails, at least return raw tool data
+            return JsonResponse({
+                "reply": "I retrieved your data but failed to generate a summary.",
+                "role": role,
+                "tool_outputs": tool_outputs,
+            }, status=500)
+
+        reply_text = final_response.choices[0].message.content or ""
+
+        # still try to extract SQL from reply
+        sql_used = None
+        if "```sql" in reply_text:
+            import re
+            match = re.search(r"```sql(.*?)```", reply_text, re.S)
+            if match:
+                sql_used = match.group(1).strip()
+
+        return JsonResponse({
+            "reply": reply_text,
+            "role": role,
+            "sql_used": sql_used,
+        })
+
+    # -------------------------------------------------------
+    # No tool call: just a normal chat reply
+    # -------------------------------------------------------
+    reply_text = assistant_msg.content or ""
+
+    # Optional: still extract SQL if present
     sql_used = None
     if "```sql" in reply_text:
         import re
