@@ -1,6 +1,68 @@
 import React, { useState, useRef, useEffect } from "react";
 import { askAI } from "../api";
 
+function renderMarkdown(text) {
+  const lines = text.split("\n");
+  const elements = [];
+  let key = 0;
+
+  for (const line of lines) {
+    if (!line.trim()) {
+      elements.push(<br key={key++} />);
+      continue;
+    }
+
+    // Bullet points
+    if (line.trim().startsWith("•") || line.trim().startsWith("-")) {
+      const content = line.trim().replace(/^[•-]\s*/, "");
+      elements.push(
+        <div key={key++} style={{ paddingLeft: 16, marginBottom: 4 }}>
+          • {formatInline(content)}
+        </div>
+      );
+      continue;
+    }
+
+    elements.push(<p key={key++} style={{ marginBottom: 6 }}>{formatInline(line)}</p>);
+  }
+
+  return elements;
+}
+
+function formatInline(text) {
+  // Handle **bold** and [label](url)
+  const parts = [];
+  const regex = /(\*\*(.+?)\*\*|\[([^\]]+)\]\((https?:\/\/[^\)]+)\))/g;
+  let last = 0;
+  let match;
+  let i = 0;
+
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > last) {
+      parts.push(<span key={i++}>{text.slice(last, match.index)}</span>);
+    }
+    if (match[2]) {
+      // Bold
+      parts.push(<strong key={i++}>{match[2]}</strong>);
+    } else if (match[3] && match[4]) {
+      // Link
+      parts.push(
+        <a key={i++} href={match[4]} target="_blank" rel="noopener noreferrer"
+          style={{ color: "var(--green-mid)", fontWeight: 500 }}>
+          {match[3]}
+        </a>
+      );
+    }
+    last = match.index + match[0].length;
+  }
+
+  if (last < text.length) {
+    parts.push(<span key={i++}>{text.slice(last)}</span>);
+  }
+
+  return parts.length > 0 ? parts : text;
+}
+
 function AskAI({ user }) {
   const [messages, setMessages] = useState([
     {
@@ -63,7 +125,7 @@ function AskAI({ user }) {
                 {msg.role === "user" ? "You" : "Fairway AI"}
                 {msg.cached && <span className="cached-badge">cached</span>}
               </div>
-              {msg.text}
+              {msg.role === "ai" ? renderMarkdown(msg.text) : msg.text}
             </div>
           ))}
 
