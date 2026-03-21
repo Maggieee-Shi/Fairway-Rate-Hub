@@ -380,7 +380,7 @@ def ask_ai(request):
 @require_http_methods(["GET"])
 def hot_questions(request):
     user = _current_user(request)
-    limit = 10 if user else 3
+    limit = 10 if user else 5
 
     with connection.cursor() as cur:
         cur.execute(
