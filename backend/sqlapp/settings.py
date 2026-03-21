@@ -35,7 +35,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
 
     # Your backend app
-    "sqlapp",
+    "sqlapp.apps.SqlappConfig",
 
     # CORS support
     'django.contrib.sessions',

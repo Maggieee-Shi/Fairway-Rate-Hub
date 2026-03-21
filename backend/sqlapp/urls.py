@@ -17,6 +17,7 @@ urlpatterns = [
     path("api/ask/", views.ask_ai),
     path("api/hot/", views.hot_questions),
     path("api/history/", views.user_history),
+    path("api/view/", views.record_view),
 
     # Admin
     path("api/admin/reviews/", views.admin_reviews),

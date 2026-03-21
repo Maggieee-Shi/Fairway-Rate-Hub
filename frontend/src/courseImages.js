@@ -15,7 +15,7 @@ const COURSE_IMAGES = {
   "half moon bay golf links — old course":
     "https://images.unsplash.com/photo-1587174486073-ae5e5cff23aa?w=800&q=80",
   "tilden park golf course":
-    "https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=800&q=80",
+    "https://www.ebparks.org/sites/default/files/styles/short_hero_800_x_686_/public/TIL-2011-10-02-07310-footer.jpg",
   "chuck corica golf complex — south course":
     "https://images.unsplash.com/photo-1611374243147-44a702c2d44c?w=800&q=80",
   "boundary oak golf course":
@@ -23,11 +23,11 @@ const COURSE_IMAGES = {
   "palo alto golf course":
     "https://www.baylandsgolflinks.com/wp-content/uploads/sites/8950/2023/06/homeslide1.jpg",
   "sunol valley golf course — palm course":
-    "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80",
+    "https://storage.googleapis.com/foretee-cdn/course/2141890716.jpg",
   "cinnabar hills golf club":
     "https://www.cinnabarhills.com/images/uploads/photo-golf.jpg",
   "santa teresa golf club":
-    "https://images.unsplash.com/photo-1504370805625-d32c054b24a8?w=800&q=80",
+    "https://photos-eu.bazaarvoice.com/photo/2/cGhvdG86Z29sZm5vdw/01d7de41-ea19-5118-bc6b-35381d26f214",
   "poppy ridge golf course":
     "https://poppyridgegolf.ncga.org/hs-fs/hubfs/Poppy%20Ridge%20H16%200795-Edit.jpg",
   "diablo creek golf course":

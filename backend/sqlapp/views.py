@@ -442,6 +442,43 @@ def user_history(request):
 
 
 # ---------------------------------------------------------------------------
+# Record a view — increments ask_count when a question is expanded/clicked
+# ---------------------------------------------------------------------------
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def record_view(request):
+    """
+    Increment ask_count for a question when a visitor or user expands it
+    on the Trending or History page.  Accepts either:
+      { "question_id": <int> }   — for history items (exact QuestionLog row)
+      { "question_text": "..." } — for trending items (match by text)
+    No authentication required — visitors clicking trending questions also count.
+    """
+    body = _json_body(request)
+    question_id = body.get("question_id")
+    question_text = body.get("question_text", "").strip()
+
+    with connection.cursor() as cur:
+        if question_id:
+            cur.execute(
+                "UPDATE QuestionLog SET ask_count = ask_count + 1 WHERE id = %s",
+                [question_id],
+            )
+            updated = cur.rowcount
+        elif question_text:
+            cur.execute(
+                "UPDATE QuestionLog SET ask_count = ask_count + 1 WHERE question_text = %s",
+                [question_text],
+            )
+            updated = cur.rowcount
+        else:
+            return JsonResponse({"error": "question_id or question_text required"}, status=400)
+
+    return JsonResponse({"updated": updated > 0})
+
+
+# ---------------------------------------------------------------------------
 # Admin — Reviews
 # ---------------------------------------------------------------------------
 

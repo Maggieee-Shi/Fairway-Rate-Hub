@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { askAI, fetchHistory } from "../api";
+import { askAI, fetchHistory, recordView } from "../api";
 import { getCourseImage } from "../courseImages";
 
 function formatInline(text) {
@@ -255,7 +255,11 @@ function HistoryPanel({ onSelect }) {
                 </span>
                 <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
                   <button
-                    onClick={() => setExpanded(expanded === item.id ? null : item.id)}
+                    onClick={() => {
+                      const isOpening = expanded !== item.id;
+                      setExpanded(isOpening ? item.id : null);
+                      if (isOpening) recordView({ question_id: item.id }).catch(() => {});
+                    }}
                     style={{
                       background: "none",
                       border: "none",
