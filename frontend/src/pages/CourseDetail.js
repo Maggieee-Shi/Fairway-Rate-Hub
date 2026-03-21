@@ -57,7 +57,7 @@ function CourseDetail({ user }) {
 
   useEffect(() => {
     loadCourse();
-  }, [id]);
+  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleReviewSubmit = async (e) => {
     e.preventDefault();

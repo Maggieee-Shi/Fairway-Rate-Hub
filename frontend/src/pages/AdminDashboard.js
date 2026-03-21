@@ -54,7 +54,7 @@ function ReviewsTab() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, [statusFilter]);
+  useEffect(() => { load(); }, [statusFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleStatus = async (id, status) => {
     try {
