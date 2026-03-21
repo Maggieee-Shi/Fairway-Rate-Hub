@@ -1,88 +1,20 @@
 import React, { useState, useRef, useEffect } from "react";
 import { askAI } from "../api";
 
-function MapButton({ url, label }) {
-  // Extract query from Google Maps URL for display
-  const query = url.includes("query=")
-    ? decodeURIComponent(url.split("query=")[1].replace(/\+/g, " "))
-    : label;
-
-  return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 6,
-        marginTop: 10,
-        padding: "7px 14px",
-        background: "var(--green-pale)",
-        color: "var(--green-dark)",
-        borderRadius: 8,
-        fontWeight: 600,
-        fontSize: "0.85rem",
-        textDecoration: "none",
-        border: "1px solid var(--green-light)",
-      }}
-    >
-      📍 {query} — Open in Google Maps
-    </a>
-  );
-}
-
-function renderMarkdown(text) {
-  // GPT sometimes returns bullets inline separated by "•" on one line.
-  // Normalize: split inline bullets into separate lines first.
-  const normalized = text
-    .replace(/•\s*/g, "\n• ")
-    .replace(/\[View on Google Maps\]/gi, "\n[View on Google Maps]");
-
-  const lines = normalized.split("\n");
-  const elements = [];
-  let key = 0;
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed) {
-      elements.push(<div key={key++} style={{ height: 8 }} />);
-      continue;
-    }
-
-    // Google Maps link line
-    const mapMatch = trimmed.match(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/);
-    if (mapMatch && mapMatch[2].includes("google.com/maps")) {
-      elements.push(<div key={key++}><MapButton url={mapMatch[2]} label={mapMatch[1]} /></div>);
-      continue;
-    }
-
-    // Bullet point
-    if (trimmed.startsWith("•")) {
-      const content = trimmed.replace(/^•\s*/, "");
-      elements.push(
-        <div key={key++} style={{ display: "flex", gap: 8, paddingLeft: 8, marginBottom: 4 }}>
-          <span style={{ color: "var(--green-mid)", flexShrink: 0 }}>•</span>
-          <span>{formatInline(content)}</span>
-        </div>
-      );
-      continue;
-    }
-
-    // Regular line (may contain **bold**)
-    elements.push(
-      <p key={key++} style={{ marginBottom: 6, lineHeight: 1.6 }}>
-        {formatInline(trimmed)}
-      </p>
-    );
-  }
-
-  return elements;
-}
+const GOLF_IMAGES = [
+  "https://images.unsplash.com/photo-1535131749006-b7f58c99034b?w=600&q=80",
+  "https://images.unsplash.com/photo-1587174486073-ae5e5cff23aa?w=600&q=80",
+  "https://images.unsplash.com/photo-1592919505780-303950717480?w=600&q=80",
+  "https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=600&q=80",
+  "https://images.unsplash.com/photo-1600965962361-9035dbfd1c50?w=600&q=80",
+  "https://images.unsplash.com/photo-1611374243147-44a702c2d44c?w=600&q=80",
+  "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&q=80",
+  "https://images.unsplash.com/photo-1504370805625-d32c054b24a8?w=600&q=80",
+];
 
 function formatInline(text) {
   const parts = [];
-  const regex = /(\*\*(.+?)\*\*|\[([^\]]+)\]\((https?:\/\/[^)]+)\))/g;
+  const regex = /\*\*(.+?)\*\*/g;
   let last = 0;
   let match;
   let i = 0;
@@ -91,16 +23,11 @@ function formatInline(text) {
     if (match.index > last) {
       parts.push(<span key={i++}>{text.slice(last, match.index)}</span>);
     }
-    if (match[2]) {
-      parts.push(<strong key={i++} style={{ color: "var(--green-dark)" }}>{match[2]}</strong>);
-    } else if (match[3] && match[4]) {
-      parts.push(
-        <a key={i++} href={match[4]} target="_blank" rel="noopener noreferrer"
-          style={{ color: "var(--green-mid)", fontWeight: 500 }}>
-          {match[3]}
-        </a>
-      );
-    }
+    parts.push(
+      <strong key={i++} style={{ color: "var(--green-dark)" }}>
+        {match[1]}
+      </strong>
+    );
     last = match.index + match[0].length;
   }
 
@@ -109,6 +36,135 @@ function formatInline(text) {
   }
 
   return parts.length > 0 ? parts : text;
+}
+
+function CourseBlock({ block, imageUrl }) {
+  const lines = block
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  if (lines.length === 0) return null;
+
+  // First line is the course name (may be **bold**)
+  const nameLine = lines[0].replace(/^\*\*|\*\*$/g, "");
+  const rest = lines.slice(1);
+
+  const bullets = [];
+  const desc = [];
+
+  for (const line of rest) {
+    if (line.startsWith("•") || line.startsWith("-")) {
+      bullets.push(line.replace(/^[•\-]\s*/, ""));
+    } else {
+      desc.push(line);
+    }
+  }
+
+  return (
+    <div
+      style={{
+        background: "var(--white)",
+        border: "1px solid var(--gray-200)",
+        borderRadius: 12,
+        overflow: "hidden",
+        marginBottom: 20,
+        boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+      }}
+    >
+      <img
+        src={imageUrl}
+        alt={nameLine}
+        style={{ width: "100%", height: 160, objectFit: "cover", display: "block" }}
+        onError={(e) => { e.target.style.display = "none"; }}
+      />
+      <div style={{ padding: "14px 16px" }}>
+        <h3
+          style={{
+            fontSize: "1rem",
+            fontWeight: 700,
+            color: "var(--green-dark)",
+            marginBottom: 6,
+          }}
+        >
+          {nameLine}
+        </h3>
+        {desc.map((d, i) => (
+          <p key={i} style={{ color: "var(--gray-700)", fontSize: "0.9rem", marginBottom: 8, lineHeight: 1.6 }}>
+            {formatInline(d)}
+          </p>
+        ))}
+        {bullets.length > 0 && (
+          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+            {bullets.map((b, i) => (
+              <li
+                key={i}
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  fontSize: "0.875rem",
+                  color: "var(--gray-700)",
+                  marginBottom: 4,
+                  lineHeight: 1.5,
+                }}
+              >
+                <span style={{ color: "var(--green-mid)", flexShrink: 0 }}>•</span>
+                <span>{formatInline(b)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function renderAIResponse(text) {
+  // Split on --- separator (with optional surrounding whitespace/newlines)
+  const rawBlocks = text.split(/\n\s*---\s*\n/);
+
+  // Check if response looks like structured course blocks
+  const hasCourseBlocks = rawBlocks.some(
+    (b) => b.trim().match(/^\*\*[^*]+\*\*/) || b.trim().match(/^[A-Z][^•\n]{5,}\n/)
+  );
+
+  if (rawBlocks.length > 1 || hasCourseBlocks) {
+    return rawBlocks
+      .map((block, i) => {
+        const trimmed = block.trim();
+        if (!trimmed) return null;
+        return (
+          <CourseBlock
+            key={i}
+            block={trimmed}
+            imageUrl={GOLF_IMAGES[i % GOLF_IMAGES.length]}
+          />
+        );
+      })
+      .filter(Boolean);
+  }
+
+  // Fallback: plain text rendering
+  return text
+    .split("\n")
+    .map((line, i) => {
+      const trimmed = line.trim();
+      if (!trimmed) return <div key={i} style={{ height: 8 }} />;
+      if (trimmed.startsWith("•") || trimmed.startsWith("-")) {
+        const content = trimmed.replace(/^[•\-]\s*/, "");
+        return (
+          <div key={i} style={{ display: "flex", gap: 8, paddingLeft: 8, marginBottom: 4 }}>
+            <span style={{ color: "var(--green-mid)", flexShrink: 0 }}>•</span>
+            <span>{formatInline(content)}</span>
+          </div>
+        );
+      }
+      return (
+        <p key={i} style={{ marginBottom: 6, lineHeight: 1.6 }}>
+          {formatInline(trimmed)}
+        </p>
+      );
+    });
 }
 
 function AskAI({ user }) {
@@ -173,7 +229,7 @@ function AskAI({ user }) {
                 {msg.role === "user" ? "You" : "Fairway AI"}
                 {msg.cached && <span className="cached-badge">cached</span>}
               </div>
-              {msg.role === "ai" ? renderMarkdown(msg.text) : msg.text}
+              {msg.role === "ai" ? renderAIResponse(msg.text) : msg.text}
             </div>
           ))}
 
