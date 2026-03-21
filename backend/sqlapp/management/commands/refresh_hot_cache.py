@@ -21,13 +21,13 @@ DEFAULT_QUESTIONS = [
     "What are the best public golf courses in the Bay Area?",
     "Which Bay Area golf course has the best ocean views?",
     "What are beginner-friendly golf courses near San Francisco?",
-    "How are the course conditions at TPC Harding Park?",
-    "What is the difficulty of Half Moon Bay Ocean Course?",
+    "How are the current conditions at TPC Harding Park?",
+    "What Bay Area golf courses have driving ranges with instructors?",
     "Which Bay Area courses offer the best value for money?",
     "What is the best time of year to play golf in the Bay Area?",
-    "Compare Cinnabar Hills Golf Club and Crystal Springs Golf Course.",
-    "What Bay Area courses are best for low handicap golfers?",
-    "What are typical green fees at Bay Area public golf courses?",
+    "Compare Half Moon Bay Ocean Course and TPC Harding Park.",
+    "What are the fastest greens in the Bay Area?",
+    "Which Bay Area golf courses allow walking (no cart required)?",
 ]
 
 
@@ -106,7 +106,7 @@ class Command(BaseCommand):
                         """
                         INSERT INTO QuestionLog
                             (user_id, question_text, question_embedding, answer, ask_count)
-                        VALUES (NULL, %s, %s, %s, 1)
+                        VALUES (NULL, %s, %s, %s, 10)
                         """,
                         [question, json.dumps(embedding), answer],
                     )
