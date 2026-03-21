@@ -32,7 +32,7 @@ function renderMarkdown(text) {
 function formatInline(text) {
   // Handle **bold** and [label](url)
   const parts = [];
-  const regex = /(\*\*(.+?)\*\*|\[([^\]]+)\]\((https?:\/\/[^\)]+)\))/g;
+  const regex = /(\*\*(.+?)\*\*|\[([^\]]+)\]\((https?:\/\/[^)]+)\))/g;
   let last = 0;
   let match;
   let i = 0;
