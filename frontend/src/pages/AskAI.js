@@ -1,36 +1,86 @@
 import React, { useState, useRef, useEffect } from "react";
 import { askAI } from "../api";
 
+function MapButton({ url, label }) {
+  // Extract query from Google Maps URL for display
+  const query = url.includes("query=")
+    ? decodeURIComponent(url.split("query=")[1].replace(/\+/g, " "))
+    : label;
+
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        marginTop: 10,
+        padding: "7px 14px",
+        background: "var(--green-pale)",
+        color: "var(--green-dark)",
+        borderRadius: 8,
+        fontWeight: 600,
+        fontSize: "0.85rem",
+        textDecoration: "none",
+        border: "1px solid var(--green-light)",
+      }}
+    >
+      📍 {query} — Open in Google Maps
+    </a>
+  );
+}
+
 function renderMarkdown(text) {
-  const lines = text.split("\n");
+  // GPT sometimes returns bullets inline separated by "•" on one line.
+  // Normalize: split inline bullets into separate lines first.
+  const normalized = text
+    .replace(/•\s*/g, "\n• ")
+    .replace(/\[View on Google Maps\]/gi, "\n[View on Google Maps]");
+
+  const lines = normalized.split("\n");
   const elements = [];
   let key = 0;
 
   for (const line of lines) {
-    if (!line.trim()) {
-      elements.push(<br key={key++} />);
+    const trimmed = line.trim();
+    if (!trimmed) {
+      elements.push(<div key={key++} style={{ height: 8 }} />);
       continue;
     }
 
-    // Bullet points
-    if (line.trim().startsWith("•") || line.trim().startsWith("-")) {
-      const content = line.trim().replace(/^[•-]\s*/, "");
+    // Google Maps link line
+    const mapMatch = trimmed.match(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/);
+    if (mapMatch && mapMatch[2].includes("google.com/maps")) {
+      elements.push(<div key={key++}><MapButton url={mapMatch[2]} label={mapMatch[1]} /></div>);
+      continue;
+    }
+
+    // Bullet point
+    if (trimmed.startsWith("•")) {
+      const content = trimmed.replace(/^•\s*/, "");
       elements.push(
-        <div key={key++} style={{ paddingLeft: 16, marginBottom: 4 }}>
-          • {formatInline(content)}
+        <div key={key++} style={{ display: "flex", gap: 8, paddingLeft: 8, marginBottom: 4 }}>
+          <span style={{ color: "var(--green-mid)", flexShrink: 0 }}>•</span>
+          <span>{formatInline(content)}</span>
         </div>
       );
       continue;
     }
 
-    elements.push(<p key={key++} style={{ marginBottom: 6 }}>{formatInline(line)}</p>);
+    // Regular line (may contain **bold**)
+    elements.push(
+      <p key={key++} style={{ marginBottom: 6, lineHeight: 1.6 }}>
+        {formatInline(trimmed)}
+      </p>
+    );
   }
 
   return elements;
 }
 
 function formatInline(text) {
-  // Handle **bold** and [label](url)
   const parts = [];
   const regex = /(\*\*(.+?)\*\*|\[([^\]]+)\]\((https?:\/\/[^)]+)\))/g;
   let last = 0;
@@ -42,10 +92,8 @@ function formatInline(text) {
       parts.push(<span key={i++}>{text.slice(last, match.index)}</span>);
     }
     if (match[2]) {
-      // Bold
-      parts.push(<strong key={i++}>{match[2]}</strong>);
+      parts.push(<strong key={i++} style={{ color: "var(--green-dark)" }}>{match[2]}</strong>);
     } else if (match[3] && match[4]) {
-      // Link
       parts.push(
         <a key={i++} href={match[4]} target="_blank" rel="noopener noreferrer"
           style={{ color: "var(--green-mid)", fontWeight: 500 }}>
