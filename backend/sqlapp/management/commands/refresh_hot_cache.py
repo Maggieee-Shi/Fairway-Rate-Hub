@@ -122,10 +122,12 @@ class Command(BaseCommand):
         with connection.cursor() as cur:
             cur.execute(
                 """
-                SELECT question_text, answer, ask_count
+                SELECT question_text, MAX(answer), SUM(ask_count) AS total
                 FROM QuestionLog
                 WHERE answer IS NOT NULL
-                ORDER BY ask_count DESC
+                  AND answer NOT LIKE 'Please ask a golf related question%'
+                GROUP BY question_text
+                ORDER BY total DESC
                 LIMIT 10
                 """
             )
