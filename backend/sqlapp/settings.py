@@ -60,14 +60,14 @@ MIDDLEWARE = [
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
+    "https://fairway-rate-hub.vercel.app",
     "https://fairway-rate-hub-git-main-maggieee-shis-projects.vercel.app",
-    "https://fairway-rate-riomssx2i-maggieee-shis-projects.vercel.app",
 ]
 
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",
+    "https://fairway-rate-hub.vercel.app",
     "https://fairway-rate-hub-git-main-maggieee-shis-projects.vercel.app",
-    "https://fairway-rate-riomssx2i-maggieee-shis-projects.vercel.app",
 ]
 CSRF_COOKIE_SAMESITE = None
 CSRF_COOKIE_SECURE = False
