@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { fetchCourse, submitReview } from "../api";
 import ReviewCard from "../components/ReviewCard";
+import { getCourseImage } from "../courseImages";
 
 function Stars({ value }) {
   return (
@@ -107,6 +108,12 @@ function CourseDetail({ user }) {
       </Link>
 
       <div style={{ marginTop: 20, marginBottom: 32 }}>
+        <img
+          src={getCourseImage(course.name)}
+          alt={course.name}
+          style={{ width: "100%", height: 220, objectFit: "cover", borderRadius: 12, marginBottom: 16 }}
+          onError={(e) => { e.target.style.display = "none"; }}
+        />
         <h1 className="page-title">{course.name}</h1>
         <p style={{ color: "var(--gray-500)", marginBottom: 10 }}>{course.location}</p>
         <Stars value={course.rating_avg} />

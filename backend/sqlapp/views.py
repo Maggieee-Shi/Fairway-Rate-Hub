@@ -334,11 +334,19 @@ def ask_ai(request):
             continue
 
     if best_similarity >= SIMILARITY_THRESHOLD and best_answer:
-        # Semantic cache hit — increment ask_count
         with connection.cursor() as cur:
+            # Increment global ask_count on the matched entry
             cur.execute(
                 "UPDATE QuestionLog SET ask_count = ask_count + 1 WHERE id = %s",
                 [best_match_id],
+            )
+            # Also record this user's specific question so history is complete
+            cur.execute(
+                """
+                INSERT INTO QuestionLog (user_id, question_text, question_embedding, answer, ask_count)
+                VALUES (%s, %s, %s, %s, 1)
+                """,
+                [user["id"], question, json.dumps(new_embedding), best_answer],
             )
         return JsonResponse({"answer": best_answer, "cached": True})
 
@@ -396,6 +404,41 @@ def hot_questions(request):
         for r in rows
     ]
     return JsonResponse({"questions": questions, "is_authenticated": user is not None})
+
+
+# ---------------------------------------------------------------------------
+# User — Question History
+# ---------------------------------------------------------------------------
+
+@require_http_methods(["GET"])
+def user_history(request):
+    user = _current_user(request)
+    if not user:
+        return JsonResponse({"error": "Authentication required"}, status=401)
+
+    with connection.cursor() as cur:
+        cur.execute(
+            """
+            SELECT id, question_text, answer, asked_at
+            FROM QuestionLog
+            WHERE user_id = %s
+            ORDER BY asked_at DESC
+            LIMIT 5
+            """,
+            [user["id"]],
+        )
+        rows = cur.fetchall()
+
+    history = [
+        {
+            "id": r[0],
+            "question": r[1],
+            "answer": r[2],
+            "asked_at": r[3].isoformat() if r[3] else None,
+        }
+        for r in rows
+    ]
+    return JsonResponse({"history": history})
 
 
 # ---------------------------------------------------------------------------

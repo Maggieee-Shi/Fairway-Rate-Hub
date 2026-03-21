@@ -30,6 +30,7 @@ export const submitReview = (courseId, rating, content) =>
 // AI
 export const askAI = (question) => request("POST", "/api/ask/", { question });
 export const fetchHotQuestions = () => request("GET", "/api/hot/");
+export const fetchHistory = () => request("GET", "/api/history/");
 
 // Admin — reviews
 export const fetchAdminReviews = (status = "") =>

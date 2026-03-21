@@ -1,16 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
-import { askAI } from "../api";
-
-const GOLF_IMAGES = [
-  "https://images.unsplash.com/photo-1535131749006-b7f58c99034b?w=600&q=80",
-  "https://images.unsplash.com/photo-1587174486073-ae5e5cff23aa?w=600&q=80",
-  "https://images.unsplash.com/photo-1592919505780-303950717480?w=600&q=80",
-  "https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=600&q=80",
-  "https://images.unsplash.com/photo-1600965962361-9035dbfd1c50?w=600&q=80",
-  "https://images.unsplash.com/photo-1611374243147-44a702c2d44c?w=600&q=80",
-  "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&q=80",
-  "https://images.unsplash.com/photo-1504370805625-d32c054b24a8?w=600&q=80",
-];
+import { askAI, fetchHistory } from "../api";
+import { getCourseImage } from "../courseImages";
 
 function formatInline(text) {
   const parts = [];
@@ -38,7 +28,7 @@ function formatInline(text) {
   return parts.length > 0 ? parts : text;
 }
 
-function CourseBlock({ block, imageUrl }) {
+function CourseBlock({ block, blockIndex }) {
   const lines = block
     .split("\n")
     .map((l) => l.trim())
@@ -48,6 +38,7 @@ function CourseBlock({ block, imageUrl }) {
 
   // First line is the course name (may be **bold**)
   const nameLine = lines[0].replace(/^\*\*|\*\*$/g, "");
+  const imageUrl = getCourseImage(nameLine, blockIndex);
   const rest = lines.slice(1);
 
   const bullets = [];
@@ -159,7 +150,7 @@ function renderAIResponse(text) {
           <CourseBlock
             key={i}
             block={trimmed}
-            imageUrl={GOLF_IMAGES[i % GOLF_IMAGES.length]}
+            blockIndex={i}
           />
         );
       })
@@ -187,6 +178,135 @@ function renderAIResponse(text) {
         </p>
       );
     });
+}
+
+function HistoryPanel({ onSelect }) {
+  const [history, setHistory] = useState([]);
+  const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState(null);
+
+  useEffect(() => {
+    fetchHistory()
+      .then((d) => setHistory(d.history))
+      .catch(() => {});
+  }, []);
+
+  if (history.length === 0) return null;
+
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        style={{
+          background: "none",
+          border: "1px solid var(--gray-200)",
+          borderRadius: 8,
+          padding: "8px 14px",
+          cursor: "pointer",
+          fontSize: "0.85rem",
+          color: "var(--green-dark)",
+          fontWeight: 600,
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+        }}
+      >
+        {open ? "▲" : "▼"} My Search History ({history.length})
+      </button>
+
+      {open && (
+        <div
+          style={{
+            marginTop: 8,
+            border: "1px solid var(--gray-200)",
+            borderRadius: 10,
+            overflow: "hidden",
+            maxHeight: 340,
+            overflowY: "auto",
+          }}
+        >
+          {history.map((item) => (
+            <div
+              key={item.id}
+              style={{
+                borderBottom: "1px solid var(--gray-100)",
+                padding: "10px 14px",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  gap: 8,
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: "0.875rem",
+                    color: "var(--gray-700)",
+                    fontWeight: 500,
+                    flex: 1,
+                    cursor: "pointer",
+                  }}
+                  onClick={() => onSelect(item.question)}
+                >
+                  {item.question}
+                </span>
+                <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                  <button
+                    onClick={() => setExpanded(expanded === item.id ? null : item.id)}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "var(--green-mid)",
+                      fontSize: "0.78rem",
+                      cursor: "pointer",
+                      padding: 0,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {expanded === item.id ? "Hide" : "View"}
+                  </button>
+                  <button
+                    onClick={() => onSelect(item.question)}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "var(--gray-500)",
+                      fontSize: "0.78rem",
+                      cursor: "pointer",
+                      padding: 0,
+                    }}
+                  >
+                    Ask again
+                  </button>
+                </div>
+              </div>
+              <div style={{ fontSize: "0.75rem", color: "var(--gray-400)", marginTop: 2 }}>
+                {item.asked_at ? new Date(item.asked_at).toLocaleString() : ""}
+              </div>
+              {expanded === item.id && (
+                <div
+                  style={{
+                    marginTop: 10,
+                    padding: "10px 12px",
+                    background: "var(--green-pale)",
+                    borderRadius: 8,
+                    fontSize: "0.85rem",
+                    color: "var(--gray-700)",
+                    lineHeight: 1.6,
+                  }}
+                >
+                  {renderAIResponse(item.answer)}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function AskAI({ user }) {
@@ -229,6 +349,10 @@ function AskAI({ user }) {
     }
   };
 
+  const handleHistorySelect = (question) => {
+    setInput(question);
+  };
+
   return (
     <div className="page">
       <div className="chat-container">
@@ -238,6 +362,8 @@ function AskAI({ user }) {
             GPT-4 powered — real-time Bay Area golf insights
           </p>
         </div>
+
+        <HistoryPanel onSelect={handleHistorySelect} />
 
         <div className="chat-history">
           {messages.map((msg, i) => (

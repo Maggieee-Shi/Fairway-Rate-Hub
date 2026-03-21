@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { getCourseImage } from "../courseImages";
 
 function StarRating({ value }) {
   const full = Math.round(value);
@@ -17,6 +18,12 @@ function StarRating({ value }) {
 function CourseCard({ course }) {
   return (
     <Link to={`/courses/${course.id}`} className="course-card">
+      <img
+        src={getCourseImage(course.name)}
+        alt={course.name}
+        style={{ width: "100%", height: 140, objectFit: "cover", borderRadius: "8px 8px 0 0", marginBottom: 12 }}
+        onError={(e) => { e.target.style.display = "none"; }}
+      />
       <div className="course-card-name">{course.name}</div>
       <div className="course-card-location">{course.location}</div>
       <div className="course-card-meta">
