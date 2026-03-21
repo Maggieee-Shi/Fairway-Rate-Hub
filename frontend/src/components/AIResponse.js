@@ -88,34 +88,47 @@ function CourseBlock({ block, blockIndex }) {
   );
 }
 
-export function renderAIResponse(text) {
-  const rawBlocks = text.split(/\n\s*---\s*\n/);
-  const hasCourseBlocks = rawBlocks.some(
-    (b) => b.trim().match(/^\*\*[^*]+\*\*/) || b.trim().match(/^[A-Z][^•\n]{5,}\n/)
-  );
+function isCourseBlock(block) {
+  // Only treat as a course card if the first non-empty line is a bold name **...**
+  const firstLine = block.trim().split("\n")[0].trim();
+  return /^\*\*[^*]+\*\*/.test(firstLine);
+}
 
-  if (rawBlocks.length > 1 || hasCourseBlocks) {
-    return rawBlocks
-      .map((block, i) => {
-        const trimmed = block.trim();
-        if (!trimmed) return null;
-        return <CourseBlock key={i} block={trimmed} blockIndex={i} />;
-      })
-      .filter(Boolean);
-  }
-
-  // Fallback: plain text
+function renderPlainBlock(text, keyOffset = 0) {
   return text.split("\n").map((line, i) => {
     const trimmed = line.trim();
-    if (!trimmed) return <div key={i} style={{ height: 8 }} />;
+    if (!trimmed) return <div key={keyOffset + i} style={{ height: 8 }} />;
     if (trimmed.startsWith("•") || trimmed.startsWith("-")) {
       return (
-        <div key={i} style={{ display: "flex", gap: 8, paddingLeft: 8, marginBottom: 4 }}>
+        <div key={keyOffset + i} style={{ display: "flex", gap: 8, paddingLeft: 8, marginBottom: 4 }}>
           <span style={{ color: "var(--green-mid)", flexShrink: 0 }}>•</span>
           <span>{formatInline(trimmed.replace(/^[•-]\s*/, ""))}</span>
         </div>
       );
     }
-    return <p key={i} style={{ marginBottom: 6, lineHeight: 1.6 }}>{formatInline(trimmed)}</p>;
+    return <p key={keyOffset + i} style={{ marginBottom: 6, lineHeight: 1.6 }}>{formatInline(trimmed)}</p>;
   });
+}
+
+export function renderAIResponse(text) {
+  const rawBlocks = text.split(/\n\s*---\s*\n/);
+  const hasCourseBlocks = rawBlocks.some((b) => isCourseBlock(b));
+
+  if (hasCourseBlocks) {
+    let courseIndex = 0;
+    return rawBlocks
+      .map((block, i) => {
+        const trimmed = block.trim();
+        if (!trimmed) return null;
+        if (isCourseBlock(trimmed)) {
+          return <CourseBlock key={i} block={trimmed} blockIndex={courseIndex++} />;
+        }
+        // Concluding paragraph or intro text — render as plain text
+        return <div key={i}>{renderPlainBlock(trimmed, i * 100)}</div>;
+      })
+      .filter(Boolean);
+  }
+
+  // Fallback: plain text (no course blocks detected)
+  return renderPlainBlock(text);
 }
