@@ -6,13 +6,11 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import LearnerDashboard from "./pages/LearnerDashboard";
-import InstructorDashboard from "./pages/InstructorDashboard";
+import CourseList from "./pages/CourseList";
+import CourseDetail from "./pages/CourseDetail";
+import AskAI from "./pages/AskAI";
+import HotQuestions from "./pages/HotQuestions";
 import AdminDashboard from "./pages/AdminDashboard";
-import ProblemList from "./pages/ProblemList";
-import ProblemDetail from "./pages/ProblemDetail";
-import Analytics from "./pages/Analytics";
-import ChatPage from "./pages/ChatPage";
 import NotFound from "./pages/NotFound";
 import { fetchCurrentUser } from "./api";
 
@@ -21,26 +19,17 @@ function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Try to fetch current user on mount
-    async function loadUser() {
-      try {
-        const userData = await fetchCurrentUser();
-        setUser(userData);
-      } catch (err) {
-        // User not logged in
-        console.log("No user session found");
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadUser();
+    fetchCurrentUser()
+      .then(setUser)
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   if (loading) {
     return (
       <div className="app-shell">
-        <div className="page">
-          <p className="text-muted">Loading...</p>
+        <div className="page loading-page">
+          <div className="spinner" />
         </div>
       </div>
     );
@@ -51,96 +40,36 @@ function App() {
       <Navbar user={user} setUser={setUser} />
       <main className="main">
         <Routes>
-          {/* Public Routes */}
-          <Route 
-            path="/" 
-            element={user ? <Navigate to={`/${user.role}/dashboard`} replace /> : <Home user={user} />} 
-          />
-          <Route 
-            path="/login" 
-            element={user ? <Navigate to={`/${user.role}/dashboard`} replace /> : <Login setUser={setUser} />} 
-          />
-          <Route 
-            path="/register" 
-            element={user ? <Navigate to={`/${user.role}/dashboard`} replace /> : <Register setUser={setUser} />} 
-          />
-
-          {/* Student Routes */}
+          {/* Public */}
+          <Route path="/" element={<Home user={user} />} />
           <Route
-            path="/student/dashboard"
+            path="/login"
+            element={user ? <Navigate to="/" replace /> : <Login setUser={setUser} />}
+          />
+          <Route
+            path="/register"
+            element={user ? <Navigate to="/" replace /> : <Register setUser={setUser} />}
+          />
+          <Route path="/courses" element={<CourseList user={user} />} />
+          <Route path="/courses/:id" element={<CourseDetail user={user} />} />
+          <Route path="/hot" element={<HotQuestions user={user} />} />
+
+          {/* Logged-in users */}
+          <Route
+            path="/ask"
             element={
-              <ProtectedRoute user={user} allowedRoles={["student"]}>
-                <LearnerDashboard user={user} />
+              <ProtectedRoute user={user}>
+                <AskAI user={user} />
               </ProtectedRoute>
             }
           />
 
-          {/* Instructor Routes */}
+          {/* Admin */}
           <Route
-            path="/instructor/dashboard"
+            path="/admin"
             element={
-              <ProtectedRoute user={user} allowedRoles={["instructor"]}>
-                <InstructorDashboard user={user} />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* Admin Routes */}
-          <Route
-            path="/admin/dashboard"
-            element={
-              <ProtectedRoute user={user} allowedRoles={["admin"]}>
+              <ProtectedRoute user={user} adminOnly>
                 <AdminDashboard user={user} />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* Shared Routes - accessible by all authenticated users */}
-          <Route
-            path="/problems"
-            element={
-              <ProtectedRoute
-                user={user}
-                allowedRoles={["student", "instructor", "admin"]}
-              >
-                <ProblemList />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/problems/:id"
-            element={
-              <ProtectedRoute
-                user={user}
-                allowedRoles={["student", "instructor", "admin"]}
-              >
-                <ProblemDetail />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-              path="/analytics"
-              element={
-                <ProtectedRoute
-                  user={user}
-                  allowedRoles={["student", "instructor"]}
-                >
-                  <Analytics user={user} />
-                </ProtectedRoute>
-              }
-            />
-
-
-          <Route
-            path="/chat/:role"
-            element={
-              <ProtectedRoute
-                user={user}
-                allowedRoles={["student", "instructor", "admin"]}
-              >
-                <ChatPage />
               </ProtectedRoute>
             }
           />

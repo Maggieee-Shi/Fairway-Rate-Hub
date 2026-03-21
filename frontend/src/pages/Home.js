@@ -3,97 +3,131 @@ import { Link } from "react-router-dom";
 
 function Home({ user }) {
   return (
-    <div className="page">
-      <div className="page-header">
-        <div>
-          <h2 className="page-title">SQL Master Class</h2>
-          <p className="page-subtitle">
-            Practice SQL, get instant feedback, and explore your data with an AI-powered assistant.
-          </p>
-        </div>
-      </div>
-
-      <div style={{ display: "grid", gap: 16, maxWidth: 800 }}>
-        <div className="card hero-card">
-          <div className="card-header">
-            <span className="card-title">Welcome to SQL Master Class</span>
-          </div>
-          <p className="card-meta" style={{ fontSize: '1rem', marginBottom: '16px' }}>
-            Master SQL through hands-on practice with curated problems, 
-            real datasets, and AI-powered assistance.
-          </p>
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <Link to="/login" className="btn btn-primary">
-              Sign In
+    <>
+      <section className="hero">
+        <h1 className="hero-title">
+          Bay Area Golf, <span>Rated.</span>
+        </h1>
+        <p className="hero-subtitle">
+          Real-time course insights, AI-powered recommendations, and honest reviews
+          from local golfers — all in one place.
+        </p>
+        <div className="hero-actions">
+          <Link to="/courses" className="btn btn-gold">
+            Browse Courses
+          </Link>
+          {user ? (
+            <Link
+              to="/ask"
+              className="btn btn-outline"
+              style={{ color: "#fff", borderColor: "rgba(255,255,255,0.5)" }}
+            >
+              Ask AI
             </Link>
-            <Link to="/register" className="btn btn-outline">
-              Create Account
+          ) : (
+            <Link
+              to="/register"
+              className="btn btn-outline"
+              style={{ color: "#fff", borderColor: "rgba(255,255,255,0.5)" }}
+            >
+              Get Started Free
+            </Link>
+          )}
+        </div>
+      </section>
+
+      <div className="page">
+        <section style={{ marginBottom: 56 }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+              gap: 20,
+            }}
+          >
+            {[
+              {
+                icon: "🏌️",
+                title: "15 Bay Area Courses",
+                desc: "TPC Harding Park, Half Moon Bay, Poppy Ridge, and more — curated for Bay Area golfers.",
+              },
+              {
+                icon: "🤖",
+                title: "GPT-4 Course Insights",
+                desc: "Ask anything about conditions, tips, or course comparisons. Real-time answers from AI.",
+              },
+              {
+                icon: "⭐",
+                title: "Honest Reviews",
+                desc: "Ratings and condition reports from golfers who played the course this season.",
+              },
+              {
+                icon: "🔥",
+                title: "Trending Questions",
+                desc: "See what other Bay Area golfers are asking — top 3 free, all 10 for members.",
+              },
+            ].map((f) => (
+              <div key={f.title} className="card" style={{ textAlign: "center" }}>
+                <div style={{ fontSize: "2.2rem", marginBottom: 12 }}>{f.icon}</div>
+                <h3
+                  style={{
+                    fontSize: "1rem",
+                    fontWeight: 600,
+                    marginBottom: 8,
+                    color: "var(--green-dark)",
+                  }}
+                >
+                  {f.title}
+                </h3>
+                <p style={{ fontSize: "0.875rem", color: "var(--gray-500)", lineHeight: 1.6 }}>
+                  {f.desc}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section style={{ marginBottom: 56 }}>
+          <div className="flex-between mb-4">
+            <h2 style={{ fontSize: "1.4rem", fontWeight: 700, color: "var(--green-dark)" }}>
+              Trending Questions
+            </h2>
+            <Link to="/hot" className="btn btn-outline btn-sm">
+              View All
             </Link>
           </div>
-        </div>
+          <p style={{ color: "var(--gray-500)", fontSize: "0.9rem" }}>
+            See what Bay Area golfers are asking our AI.{" "}
+            {!user && (
+              <>
+                <Link to="/register" className="auth-link">Sign up</Link> to unlock all 10 and ask your own.
+              </>
+            )}
+          </p>
+        </section>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
-          <div className="card">
-            <div className="card-header">
-              <span className="card-title">For Students</span>
-            </div>
-            <ul style={{ paddingLeft: '20px', fontSize: '0.9rem', lineHeight: '1.8' }}>
-              <li>Practice with LeetCode-style SQL problems</li>
-              <li>Get instant feedback and scoring</li>
-              <li>Track your progress with analytics</li>
-              <li>Chat with AI assistant for help</li>
-            </ul>
-          </div>
-
-          <div className="card">
-            <div className="card-header">
-              <span className="card-title">For Instructors</span>
-            </div>
-            <ul style={{ paddingLeft: '20px', fontSize: '0.9rem', lineHeight: '1.8' }}>
-              <li>Monitor student performance</li>
-              <li>View class-level analytics</li>
-              <li>Query student data with AI</li>
-              <li>Track engagement metrics</li>
-            </ul>
-          </div>
-
-          <div className="card">
-            <div className="card-header">
-              <span className="card-title">For Admins</span>
-            </div>
-            <ul style={{ paddingLeft: '20px', fontSize: '0.9rem', lineHeight: '1.8' }}>
-              <li>Manage users and roles</li>
-              <li>Content management</li>
-              <li>System administration</li>
-            </ul>
-          </div>
-        </div>
-
-        <div className="card">
-          <div className="card-header">
-            <span className="card-title">Features</span>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginTop: '12px' }}>
-            <div>
-              <strong>🎯 Real Datasets</strong>
-              <p className="text-muted">Work with actual database schemas</p>
-            </div>
-            <div>
-              <strong>⚡ Instant Feedback</strong>
-              <p className="text-muted">Execute queries and see results immediately</p>
-            </div>
-            <div>
-              <strong>🤖 AI Assistant</strong>
-              <p className="text-muted">Natural language to SQL translation</p>
-            </div>
-            <div>
-              <strong>📊 Analytics</strong>
-              <p className="text-muted">Track your progress over time</p>
-            </div>
-          </div>
-        </div>
+        {!user && (
+          <section className="card" style={{ textAlign: "center", padding: "48px 24px" }}>
+            <h2
+              style={{
+                fontSize: "1.5rem",
+                fontWeight: 700,
+                color: "var(--green-dark)",
+                marginBottom: 12,
+              }}
+            >
+              Ready to find your next round?
+            </h2>
+            <p style={{ color: "var(--gray-500)", marginBottom: 24, fontSize: "0.95rem" }}>
+              Create a free account to ask AI questions, leave reviews, and unlock all trending insights.
+            </p>
+            <Link to="/register" className="btn btn-primary">
+              Create Free Account
+            </Link>
+          </section>
+        )}
       </div>
-    </div>
+    </>
   );
 }
 

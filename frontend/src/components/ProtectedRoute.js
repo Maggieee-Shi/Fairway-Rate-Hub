@@ -1,12 +1,11 @@
 import React from "react";
 import { Navigate } from "react-router-dom";
 
-function ProtectedRoute({ user, allowedRoles, children }) {
+function ProtectedRoute({ user, adminOnly = false, children }) {
   if (!user) {
-    // not logged in – for now just send to home
-    return <Navigate to="/" replace />;
+    return <Navigate to="/login" replace />;
   }
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
+  if (adminOnly && user.user_type !== "admin") {
     return <Navigate to="/" replace />;
   }
   return children;

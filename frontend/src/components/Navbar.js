@@ -1,100 +1,49 @@
 import React from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { logout } from "../api";
 
 function Navbar({ user, setUser }) {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const isActive = (path) => location.pathname === path ? "nav-link active" : "nav-link";
 
   const handleLogout = async () => {
     try {
       await logout();
-      setUser(null);
-      navigate("/login");
-    } catch (err) {
-      console.error(err);
-      alert("Failed to logout");
-    }
+    } catch (_) {}
+    setUser(null);
+    navigate("/");
   };
 
   return (
-    <header className="navbar">
-      <div className="navbar-inner">
-        <div className="navbar-brand">
-          <Link to="/" style={{ textDecoration: "none" }}>
-            SQL Master Class
-          </Link>
-          <span className="navbar-pill">by GPT-4</span>
-        </div>
-        <nav className="navbar-links">
-          {!user && (
-            <>
-              <Link className="navbar-link" to="/login">
-                Login
-              </Link>
-              <Link className="navbar-link" to="/register">
-                Register
-              </Link>
-            </>
-          )}
+    <nav className="navbar">
+      <Link to="/" className="navbar-brand">
+        ⛳ Fairway Rate Hub
+      </Link>
 
-          {user && user.role === "student" && (
-            <>
-              <Link className="navbar-link" to="/student/dashboard">
-                Dashboard
-              </Link>
-              <Link className="navbar-link" to="/problems">
-                Practice
-              </Link>
-              <Link className="navbar-link" to="/analytics">
-                Analytics
-              </Link>
-              <Link className="navbar-link" to="/chat/student">
-                Chat
-              </Link>
-            </>
-          )}
+      <div className="navbar-links">
+        <Link to="/courses" className={isActive("/courses")}>Courses</Link>
+        <Link to="/hot" className={isActive("/hot")}>Trending</Link>
 
-          {user && user.role === "instructor" && (
-            <>
-              <Link className="navbar-link" to="/instructor/dashboard">
-                Dashboard
-              </Link>
-              <Link className="navbar-link" to="/analytics">
-                Analytics
-              </Link>
-              <Link className="navbar-link" to="/chat/instructor">
-                Chat Assistant
-              </Link>
-            </>
-          )}
-
-          {user && user.role === "admin" && (
-            <>
-              <Link className="navbar-link" to="/admin/dashboard">
-                Admin Panel
-              </Link>
-              <Link className="navbar-link" to="/problems">
-                Problems
-              </Link>
-            </>
-          )}
-
-          {user && (
-            <>
-              <span className="navbar-user">
-                {user.name}
-              </span>
-              <button 
-                className="navbar-logout"
-                onClick={handleLogout}
-              >
-                Logout
-              </button>
-            </>
-          )}
-        </nav>
+        {user ? (
+          <>
+            <Link to="/ask" className={isActive("/ask")}>Ask AI</Link>
+            {user.user_type === "admin" && (
+              <Link to="/admin" className={isActive("/admin")}>Admin</Link>
+            )}
+            <button className="nav-btn nav-btn-outline" onClick={handleLogout}>
+              Sign Out
+            </button>
+          </>
+        ) : (
+          <>
+            <Link to="/login" className="nav-btn nav-btn-outline">Sign In</Link>
+            <Link to="/register" className="nav-btn nav-btn-gold">Join Free</Link>
+          </>
+        )}
       </div>
-    </header>
+    </nav>
   );
 }
 

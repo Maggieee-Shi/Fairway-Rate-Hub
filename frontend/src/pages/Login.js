@@ -12,30 +12,17 @@ function Login({ setUser }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    
     if (!email || !password) {
       setError("Please fill in all fields");
       return;
     }
-
     try {
       setLoading(true);
       const userData = await login(email, password);
       setUser(userData);
-      
-      // Redirect based on role
-      if (userData.role === "student") {
-        navigate("/student/dashboard");
-      } else if (userData.role === "instructor") {
-        navigate("/instructor/dashboard");
-      } else if (userData.role === "admin") {
-        navigate("/admin/dashboard");
-      } else {
-        navigate("/");
-      }
+      navigate("/");
     } catch (err) {
-      console.error(err);
-      setError("Invalid email or password");
+      setError(err.message || "Invalid email or password");
     } finally {
       setLoading(false);
     }
@@ -46,13 +33,9 @@ function Login({ setUser }) {
       <div className="auth-container">
         <div className="auth-card">
           <h2 className="auth-title">Welcome Back</h2>
-          <p className="auth-subtitle">Sign in to your SQL Master Class account</p>
+          <p className="auth-subtitle">Sign in to your Fairway Rate Hub account</p>
 
-          {error && (
-            <div className="alert alert-error">
-              {error}
-            </div>
-          )}
+          {error && <div className="alert alert-error">{error}</div>}
 
           <form onSubmit={handleSubmit} className="auth-form">
             <div className="form-group">
@@ -62,11 +45,10 @@ function Login({ setUser }) {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="your.email@example.com"
+                placeholder="your@email.com"
                 disabled={loading}
               />
             </div>
-
             <div className="form-group">
               <label className="form-label">Password</label>
               <input
@@ -78,18 +60,13 @@ function Login({ setUser }) {
                 disabled={loading}
               />
             </div>
-
-            <button
-              className="btn btn-primary btn-full"
-              type="submit"
-              disabled={loading}
-            >
+            <button className="btn btn-primary btn-full" type="submit" disabled={loading}>
               {loading ? "Signing in..." : "Sign In"}
             </button>
           </form>
 
           <p className="auth-footer">
-            Don't have an account?{" "}
+            Don&apos;t have an account?{" "}
             <Link to="/register" className="auth-link">
               Register here
             </Link>

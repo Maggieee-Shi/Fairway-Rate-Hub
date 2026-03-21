@@ -4,67 +4,30 @@ import { register } from "../api";
 
 function Register({ setUser }) {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-    role: "student", // default role
-  });
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-
-    // Validation
-    if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
+    if (!name || !email || !password) {
       setError("Please fill in all fields");
       return;
     }
-
-    if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match");
-      return;
-    }
-
-    if (formData.password.length < 6) {
+    if (password.length < 6) {
       setError("Password must be at least 6 characters");
       return;
     }
-
     try {
       setLoading(true);
-      const userData = await register({
-        name: formData.name,
-        email: formData.email,
-        password: formData.password,
-        role: formData.role,
-      });
-      
+      const userData = await register(email, password, name);
       setUser(userData);
-      
-      // Redirect based on role
-      if (userData.role === "student") {
-        navigate("/student/dashboard");
-      } else if (userData.role === "instructor") {
-        navigate("/instructor/dashboard");
-      } else if (userData.role === "admin") {
-        navigate("/admin/dashboard");
-      } else {
-        navigate("/");
-      }
+      navigate("/");
     } catch (err) {
-      console.error(err);
-      setError(err.message || "Registration failed. Email may already be in use.");
+      setError(err.message || "Registration failed");
     } finally {
       setLoading(false);
     }
@@ -74,87 +37,48 @@ function Register({ setUser }) {
     <div className="auth-page">
       <div className="auth-container">
         <div className="auth-card">
-          <h2 className="auth-title">Create Account</h2>
-          <p className="auth-subtitle">Join SQL Master Class and start learning</p>
+          <h2 className="auth-title">Join Fairway Rate Hub</h2>
+          <p className="auth-subtitle">
+            Free account — ask AI questions, leave reviews, unlock trending insights.
+          </p>
 
-          {error && (
-            <div className="alert alert-error">
-              {error}
-            </div>
-          )}
+          {error && <div className="alert alert-error">{error}</div>}
 
-          <form onSubmit={handleSubmit} className="auth-form">
+          <form onSubmit={handleSubmit}>
             <div className="form-group">
-              <label className="form-label">Full Name</label>
+              <label className="form-label">Name</label>
               <input
                 className="input"
                 type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                placeholder="John Doe"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Your name"
                 disabled={loading}
               />
             </div>
-
             <div className="form-group">
               <label className="form-label">Email</label>
               <input
                 className="input"
                 type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                placeholder="your.email@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="your@email.com"
                 disabled={loading}
               />
             </div>
-
             <div className="form-group">
               <label className="form-label">Password</label>
               <input
                 className="input"
                 type="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Min. 6 characters"
                 disabled={loading}
               />
             </div>
-
-            <div className="form-group">
-              <label className="form-label">Confirm Password</label>
-              <input
-                className="input"
-                type="password"
-                name="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                placeholder="••••••••"
-                disabled={loading}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">I am a...</label>
-              <select
-                className="select"
-                name="role"
-                value={formData.role}
-                onChange={handleChange}
-                disabled={loading}
-              >
-                <option value="student">Student</option>
-                <option value="instructor">Instructor</option>
-              </select>
-            </div>
-
-            <button
-              className="btn btn-primary btn-full"
-              type="submit"
-              disabled={loading}
-            >
+            <button className="btn btn-primary btn-full" type="submit" disabled={loading}>
               {loading ? "Creating account..." : "Create Account"}
             </button>
           </form>
@@ -162,7 +86,7 @@ function Register({ setUser }) {
           <p className="auth-footer">
             Already have an account?{" "}
             <Link to="/login" className="auth-link">
-              Sign in here
+              Sign in
             </Link>
           </p>
         </div>

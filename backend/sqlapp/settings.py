@@ -1,10 +1,13 @@
 """
-Django settings for sqlapp project.
+Django settings for Fairway Rate Hub.
 """
 
+import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 
 # ----------------------------
 # Security
@@ -99,7 +102,7 @@ WSGI_APPLICATION = "sqlapp.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.mysql",
-        "NAME": "SqlMasterClass", 
+        "NAME": "FairwayRateHub",
         "USER": "root",
         "PASSWORD": "Strongpassword123!",
         "HOST": "34.102.114.144",
