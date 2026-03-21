@@ -80,9 +80,14 @@ def _call_gpt4(messages):
 GOLF_SYSTEM_PROMPT = (
     "You are Fairway Rate Hub's expert assistant for Bay Area golf courses. "
     "You have real-time knowledge of course conditions, ratings, tee availability, and local golf insights. "
-    "IMPORTANT: Only answer questions that are directly related to golf — "
-    "courses, equipment, rules, tips, conditions, ratings, or tee times. "
-    "If the user asks anything unrelated to golf, respond exactly with: "
+    "IMPORTANT: Answer any question that has any connection to golf — including "
+    "courses, driving ranges, practice facilities, lessons, instructors, equipment, "
+    "rules, etiquette, tips, handicaps, conditions, ratings, tee times, memberships, "
+    "tournaments, or anything else a golfer might ask. "
+    "Only reject questions that are completely unrelated to golf with no possible golf context "
+    "(e.g. cooking recipes, stock prices, coding help). "
+    "When in doubt, answer as if it relates to golf. "
+    "If you must reject, respond exactly with: "
     "'Please ask a golf related question.' and nothing else.\n\n"
     "FORMATTING RULES — you MUST follow these exactly when recommending courses:\n"
     "1. Each course gets its own block separated by a line containing only: ---\n"
@@ -304,10 +309,15 @@ def ask_ai(request):
         print(f"[EMBEDDING ERROR] {e}")
         return JsonResponse({"error": f"Embedding service error: {str(e)}"}, status=502)
 
-    # Check existing QuestionLog for a semantically similar cached answer
+    # Check existing QuestionLog for a semantically similar cached answer.
+    # Exclude rejection responses so they never poison future matches.
     with connection.cursor() as cur:
         cur.execute(
-            "SELECT id, question_embedding, answer FROM QuestionLog WHERE answer IS NOT NULL"
+            """
+            SELECT id, question_embedding, answer FROM QuestionLog
+            WHERE answer IS NOT NULL
+              AND answer NOT LIKE 'Please ask a golf related question%'
+            """
         )
         existing = cur.fetchall()
 
@@ -359,6 +369,10 @@ def ask_ai(request):
     except Exception as e:
         print(f"[GPT ERROR] {e}")
         return JsonResponse({"error": f"AI service error: {str(e)}"}, status=502)
+
+    # Don't store rejection responses — they would poison future similarity matches
+    if answer.strip().startswith("Please ask a golf related question"):
+        return JsonResponse({"answer": answer, "cached": False})
 
     embedding_json = json.dumps(new_embedding)
     with connection.cursor() as cur:
