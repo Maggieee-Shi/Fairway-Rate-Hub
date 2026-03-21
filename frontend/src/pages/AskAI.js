@@ -55,7 +55,7 @@ function CourseBlock({ block, imageUrl }) {
 
   for (const line of rest) {
     if (line.startsWith("•") || line.startsWith("-")) {
-      bullets.push(line.replace(/^[•\-]\s*/, ""));
+      bullets.push(line.replace(/^[•-]\s*/, ""));
     } else {
       desc.push(line);
     }
@@ -72,12 +72,34 @@ function CourseBlock({ block, imageUrl }) {
         boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
       }}
     >
-      <img
-        src={imageUrl}
-        alt={nameLine}
-        style={{ width: "100%", height: 160, objectFit: "cover", display: "block" }}
-        onError={(e) => { e.target.style.display = "none"; }}
-      />
+      <div style={{ position: "relative" }}>
+        <img
+          src={imageUrl}
+          alt={nameLine}
+          style={{ width: "100%", height: 160, objectFit: "cover", display: "block" }}
+          onError={(e) => { e.target.style.display = "none"; }}
+        />
+        <a
+          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(nameLine + " golf course")}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            position: "absolute",
+            bottom: 8,
+            right: 8,
+            background: "rgba(255,255,255,0.92)",
+            color: "var(--green-dark)",
+            fontSize: "0.75rem",
+            fontWeight: 600,
+            padding: "4px 10px",
+            borderRadius: 20,
+            textDecoration: "none",
+            boxShadow: "0 1px 4px rgba(0,0,0,0.2)",
+          }}
+        >
+          📍 View on Maps
+        </a>
+      </div>
       <div style={{ padding: "14px 16px" }}>
         <h3
           style={{
@@ -151,7 +173,7 @@ function renderAIResponse(text) {
       const trimmed = line.trim();
       if (!trimmed) return <div key={i} style={{ height: 8 }} />;
       if (trimmed.startsWith("•") || trimmed.startsWith("-")) {
-        const content = trimmed.replace(/^[•\-]\s*/, "");
+        const content = trimmed.replace(/^[•-]\s*/, "");
         return (
           <div key={i} style={{ display: "flex", gap: 8, paddingLeft: 8, marginBottom: 4 }}>
             <span style={{ color: "var(--green-mid)", flexShrink: 0 }}>•</span>
