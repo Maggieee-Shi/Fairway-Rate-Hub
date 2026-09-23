@@ -13,7 +13,7 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 # Security
 # ----------------------------
 
-SECRET_KEY = "django-insecure-6^zrne6n%0*&_o*c7w$)wcr5d5^a20(wrzv0oebzp6a4iy9(@!"
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "django-insecure-dev-only-key")
 DEBUG = True
 
 ALLOWED_HOSTS = [
@@ -98,17 +98,17 @@ WSGI_APPLICATION = "sqlapp.wsgi.application"
 
 
 # ----------------------------
-# Database - GCP Cloud SQL (MySQL)
+# Database - Railway MySQL (credentials come from environment variables)
 # ----------------------------
 
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.mysql",
-        "NAME": "FairwayRateHub",
-        "USER": "root",
-        "PASSWORD": "Strongpassword123!",
-        "HOST": "34.102.114.144",
-        "PORT": "3306",
+        "NAME": os.environ.get("DB_NAME", "FairwayRateHub"),
+        "USER": os.environ.get("DB_USER", "root"),
+        "PASSWORD": os.environ.get("DB_PASSWORD", ""),
+        "HOST": os.environ.get("DB_HOST", "127.0.0.1"),
+        "PORT": os.environ.get("DB_PORT", "3306"),
         "OPTIONS": {
             "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
         },
