@@ -12,7 +12,7 @@ const FEATURES = (user) => [
   },
   {
     icon: "🤖",
-    title: "GPT-4 Course Insights",
+    title: "GPT-6 Luna Course Insights",
     desc: "Ask anything about conditions, tips, or course comparisons. Real-time answers from AI.",
     to: user ? "/ask" : "/register",
   },

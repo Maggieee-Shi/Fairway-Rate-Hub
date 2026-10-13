@@ -185,7 +185,7 @@ function AskAI({ user }) {
         <div className="page-header">
           <h1 className="page-title">Ask AI</h1>
           <p className="page-subtitle">
-            GPT-4 powered — real-time Bay Area golf insights
+            GPT-6 Luna powered — real-time Bay Area golf insights
           </p>
         </div>
 
