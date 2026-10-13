@@ -5,9 +5,15 @@ Django settings for Fairway Rate Hub.
 import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Load .env from the backend directory (safe to call even if file is absent)
+load_dotenv(BASE_DIR / ".env")
+
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+LLM_MODEL = os.environ.get("LLM_MODEL", "gpt-4o")
 
 # ----------------------------
 # Security

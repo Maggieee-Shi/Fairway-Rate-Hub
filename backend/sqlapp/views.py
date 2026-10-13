@@ -70,7 +70,7 @@ def _call_gpt4(messages):
     from openai import OpenAI
     client = OpenAI(api_key=settings.OPENAI_API_KEY)
     resp = client.chat.completions.create(
-        model="gpt-4o",
+        model=settings.LLM_MODEL,
         messages=messages,
         max_tokens=800,
     )

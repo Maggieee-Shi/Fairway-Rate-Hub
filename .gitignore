@@ -4,6 +4,10 @@ backend/**/__pycache__/
 backend/**/migrations/
 *.pyc
 
+# Secrets — never commit
+backend/.env
+.env
+
 # Node
 frontend/node_modules/
 *.log
