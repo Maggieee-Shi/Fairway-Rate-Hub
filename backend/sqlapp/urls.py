@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views
+from . import api_views, views
 
 urlpatterns = [
     # Auth
@@ -9,9 +9,9 @@ urlpatterns = [
     path("api/auth/me/", views.me),
 
     # Courses (public)
-    path("api/courses/", views.courses_list),
-    path("api/courses/<int:course_id>/", views.course_detail),
-    path("api/courses/<int:course_id>/reviews/", views.course_reviews),
+    path("api/courses/", api_views.CourseListView.as_view()),
+    path("api/courses/<int:course_id>/", api_views.CourseDetailView.as_view()),
+    path("api/courses/<int:course_id>/reviews/", api_views.CourseReviewCreateView.as_view()),
 
     # AI
     path("api/ask/", views.ask_ai),

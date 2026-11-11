@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     # CORS support
     'django.contrib.sessions',
     'corsheaders',
+    'rest_framework',
 ]
 
 MIDDLEWARE = [
@@ -167,3 +168,17 @@ SESSION_COOKIE_SECURE = True      # Required when SameSite=None in production (H
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_AGE = 86400
 SESSION_SAVE_EVERY_REQUEST = True
+
+# ----------------------------
+# Django REST Framework
+# ----------------------------
+# Session auth is handled by the app itself (see api_views.IsSessionUser), so
+# DRF's authentication is disabled; this also keeps endpoints CSRF-exempt like
+# the original function-based views.
+REST_FRAMEWORK = {
+    "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
+    "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
+    "DEFAULT_AUTHENTICATION_CLASSES": [],
+    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"],
+    "UNAUTHENTICATED_USER": None,
+}
