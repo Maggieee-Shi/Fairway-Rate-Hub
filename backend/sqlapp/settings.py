@@ -15,6 +15,10 @@ load_dotenv(BASE_DIR / ".env")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 LLM_MODEL = os.environ.get("LLM_MODEL", "gpt-4o")
 
+# Optional FastAPI AI service (ai-service/). When unset, /api/ask/ runs in-process.
+AI_SERVICE_URL = os.environ.get("AI_SERVICE_URL", "")
+AI_SERVICE_TOKEN = os.environ.get("AI_SERVICE_TOKEN", "")
+
 # ----------------------------
 # Security
 # ----------------------------

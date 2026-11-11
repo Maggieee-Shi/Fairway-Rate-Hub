@@ -77,6 +77,36 @@ def _call_gpt4(messages):
     return resp.choices[0].message.content
 
 
+def _ask_ai_service(user_id, question):
+    """POST to the FastAPI AI service. Returns (status, body), or None if unreachable."""
+    import urllib.error
+    import urllib.request
+
+    req = urllib.request.Request(
+        settings.AI_SERVICE_URL.rstrip("/") + "/v1/ask",
+        data=json.dumps({"user_id": user_id, "question": question}).encode(),
+        headers={
+            "Content-Type": "application/json",
+            "X-Internal-Token": settings.AI_SERVICE_TOKEN,
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            return resp.status, json.loads(resp.read())
+    except urllib.error.HTTPError as e:
+        try:
+            body = json.loads(e.read())
+        except Exception:
+            body = {}
+        if e.code >= 500 and e.code != 502:
+            return None  # service unhealthy: use local fallback
+        return e.code, body
+    except Exception as e:
+        print(f"[AI SERVICE UNREACHABLE] {e}")
+        return None
+
+
 GOLF_SYSTEM_PROMPT = (
     "You are Fairway Rate Hub's expert assistant for Bay Area golf courses. "
     "You have real-time knowledge of course conditions, ratings, tee availability, and local golf insights. "
@@ -301,6 +331,17 @@ def ask_ai(request):
     question = (data.get("question") or "").strip()
     if not question:
         return JsonResponse({"error": "question is required"}, status=400)
+
+    # Delegate to the FastAPI AI service when configured; fall back to the
+    # in-process path below if it is unset or unreachable.
+    if settings.AI_SERVICE_URL:
+        result = _ask_ai_service(user["id"], question)
+        if result is not None:
+            status, body = result
+            if status == 200:
+                return JsonResponse({"answer": body["answer"], "cached": body["cached"]})
+            if status not in (401, 503):  # misconfigured token -> local fallback
+                return JsonResponse({"error": body.get("detail", "AI service error")}, status=status)
 
     # Generate embedding for semantic similarity check
     try:
