@@ -2,8 +2,16 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { fetchHotQuestions, recordView } from "../api";
 import { renderAIResponse } from "../components/AIResponse";
+import type { HotQuestion, User, UserProps } from "../types";
 
-const FEATURES = (user) => [
+interface Feature {
+  icon: string;
+  title: string;
+  desc: string;
+  to: string;
+}
+
+const FEATURES = (user: User | null): Feature[] => [
   {
     icon: "🏌️",
     title: "15 Bay Area Courses",
@@ -30,9 +38,9 @@ const FEATURES = (user) => [
   },
 ];
 
-function Home({ user }) {
-  const [questions, setQuestions] = useState([]);
-  const [expanded, setExpanded] = useState(null);
+function Home({ user }: UserProps) {
+  const [questions, setQuestions] = useState<HotQuestion[]>([]);
+  const [expanded, setExpanded] = useState<number | null>(null);
 
   useEffect(() => {
     fetchHotQuestions()
@@ -40,9 +48,9 @@ function Home({ user }) {
       .catch(() => {});
   }, [user]);
 
-  const canViewAnswer = (rank) => user || rank <= 3;
+  const canViewAnswer = (rank: number) => user !== null || rank <= 3;
 
-  const handleExpand = (rank, questionText) => {
+  const handleExpand = (rank: number, questionText: string) => {
     const isOpening = expanded !== rank;
     setExpanded(isOpening ? rank : null);
     if (isOpening && canViewAnswer(rank)) {

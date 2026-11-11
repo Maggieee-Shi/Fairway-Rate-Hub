@@ -1,11 +1,13 @@
 import React from "react";
 import { getCourseImage } from "../courseImages";
 
-function formatInline(text) {
-  const parts = [];
+type Rendered = React.ReactNode;
+
+function formatInline(text: string): Rendered {
+  const parts: React.ReactElement[] = [];
   const regex = /\*\*(.+?)\*\*/g;
   let last = 0;
-  let match;
+  let match: RegExpExecArray | null;
   let i = 0;
   while ((match = regex.exec(text)) !== null) {
     if (match.index > last) parts.push(<span key={i++}>{text.slice(last, match.index)}</span>);
@@ -16,14 +18,19 @@ function formatInline(text) {
   return parts.length > 0 ? parts : text;
 }
 
-function CourseBlock({ block, blockIndex }) {
+interface CourseBlockProps {
+  block: string;
+  blockIndex: number;
+}
+
+function CourseBlock({ block, blockIndex }: CourseBlockProps) {
   const lines = block.split("\n").map((l) => l.trim()).filter(Boolean);
   if (lines.length === 0) return null;
 
   const nameLine = lines[0].replace(/^\*\*|\*\*$/g, "");
   const imageUrl = getCourseImage(nameLine, blockIndex);
-  const bullets = [];
-  const desc = [];
+  const bullets: string[] = [];
+  const desc: string[] = [];
 
   for (const line of lines.slice(1)) {
     if (line.startsWith("•") || line.startsWith("-")) {
@@ -47,7 +54,7 @@ function CourseBlock({ block, blockIndex }) {
           src={imageUrl}
           alt={nameLine}
           style={{ width: "100%", height: 160, objectFit: "cover", display: "block" }}
-          onError={(e) => { e.target.style.display = "none"; }}
+          onError={(e) => { e.currentTarget.style.display = "none"; }}
         />
         <a
           href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(nameLine + " golf course")}`}
@@ -88,13 +95,13 @@ function CourseBlock({ block, blockIndex }) {
   );
 }
 
-function isCourseBlock(block) {
+function isCourseBlock(block: string): boolean {
   // Only treat as a course card if the first non-empty line is a bold name **...**
   const firstLine = block.trim().split("\n")[0].trim();
   return /^\*\*[^*]+\*\*/.test(firstLine);
 }
 
-function renderPlainBlock(text, keyOffset = 0) {
+function renderPlainBlock(text: string, keyOffset = 0): React.ReactElement[] {
   return text.split("\n").map((line, i) => {
     const trimmed = line.trim();
     if (!trimmed) return <div key={keyOffset + i} style={{ height: 8 }} />;
@@ -110,7 +117,7 @@ function renderPlainBlock(text, keyOffset = 0) {
   });
 }
 
-export function renderAIResponse(text) {
+export function renderAIResponse(text: string): Rendered {
   const rawBlocks = text.split(/\n\s*---\s*\n/);
   const hasCourseBlocks = rawBlocks.some((b) => isCourseBlock(b));
 

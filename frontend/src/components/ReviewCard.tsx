@@ -1,6 +1,7 @@
 import React from "react";
+import type { Review } from "../types";
 
-function ReviewCard({ review }) {
+function ReviewCard({ review }: { review: Review }) {
   const stars = "★".repeat(review.rating) + "☆".repeat(5 - review.rating);
   const date = review.created_at
     ? new Date(review.created_at).toLocaleDateString("en-US", {

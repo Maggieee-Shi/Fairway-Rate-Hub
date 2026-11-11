@@ -3,8 +3,10 @@ import { useParams, Link } from "react-router-dom";
 import { fetchCourse, submitReview } from "../api";
 import ReviewCard from "../components/ReviewCard";
 import { getCourseImage } from "../courseImages";
+import { errorMessage } from "../api";
+import type { CourseDetail as CourseDetailData, UserProps } from "../types";
 
-function Stars({ value }) {
+function Stars({ value }: { value: number }) {
   return (
     <span className="stars">
       {[1, 2, 3, 4, 5].map((n) => (
@@ -19,7 +21,7 @@ function Stars({ value }) {
   );
 }
 
-function StarPicker({ value, onChange }) {
+function StarPicker({ value, onChange }: { value: number; onChange: (rating: number) => void }) {
   const [hover, setHover] = useState(0);
   return (
     <div className="rating-input">
@@ -38,9 +40,9 @@ function StarPicker({ value, onChange }) {
   );
 }
 
-function CourseDetail({ user }) {
-  const { id } = useParams();
-  const [course, setCourse] = useState(null);
+function CourseDetail({ user }: UserProps) {
+  const { id = "" } = useParams<{ id: string }>();
+  const [course, setCourse] = useState<CourseDetailData | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Review form state
@@ -60,7 +62,7 @@ function CourseDetail({ user }) {
     loadCourse();
   }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleReviewSubmit = async (e) => {
+  const handleReviewSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setReviewError("");
     setReviewSuccess("");
@@ -76,7 +78,7 @@ function CourseDetail({ user }) {
       setContent("");
       loadCourse();
     } catch (err) {
-      setReviewError(err.message || "Failed to submit review");
+      setReviewError(errorMessage(err, "Failed to submit review"));
     } finally {
       setSubmitting(false);
     }
@@ -112,7 +114,7 @@ function CourseDetail({ user }) {
           src={getCourseImage(course.name)}
           alt={course.name}
           style={{ width: "100%", height: 220, objectFit: "cover", borderRadius: 12, marginBottom: 16 }}
-          onError={(e) => { e.target.style.display = "none"; }}
+          onError={(e) => { e.currentTarget.style.display = "none"; }}
         />
         <h1 className="page-title">{course.name}</h1>
         <p style={{ color: "var(--gray-500)", marginBottom: 10 }}>{course.location}</p>

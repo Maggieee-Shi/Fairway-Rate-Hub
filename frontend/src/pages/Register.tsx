@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { register } from "../api";
+import { errorMessage, register } from "../api";
+import type { SetUserProps } from "../types";
 
-function Register({ setUser }) {
+function Register({ setUser }: SetUserProps) {
   const navigate = useNavigate();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -10,7 +11,7 @@ function Register({ setUser }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
     if (!name || !email || !password) {
@@ -27,7 +28,7 @@ function Register({ setUser }) {
       setUser(userData);
       navigate("/");
     } catch (err) {
-      setError(err.message || "Registration failed");
+      setError(errorMessage(err, "Registration failed"));
     } finally {
       setLoading(false);
     }

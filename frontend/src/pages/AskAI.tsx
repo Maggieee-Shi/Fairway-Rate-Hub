@@ -1,11 +1,19 @@
 import React, { useState, useRef, useEffect } from "react";
 import { askAI, fetchHistory, recordView } from "../api";
+import type { HistoryItem, UserProps } from "../types";
 import { renderAIResponse } from "../components/AIResponse";
 
-function HistoryPanel({ onSelect }) {
-  const [history, setHistory] = useState([]);
+interface ChatMessage {
+  role: "user" | "ai";
+  text: string;
+  cached?: boolean;
+  error?: boolean;
+}
+
+function HistoryPanel({ onSelect }: { onSelect: (question: string) => void }) {
+  const [history, setHistory] = useState<HistoryItem[]>([]);
   const [open, setOpen] = useState(false);
-  const [expanded, setExpanded] = useState(null);
+  const [expanded, setExpanded] = useState<number | null>(null);
 
   useEffect(() => {
     fetchHistory()
@@ -135,8 +143,8 @@ function HistoryPanel({ onSelect }) {
   );
 }
 
-function AskAI({ user }) {
-  const [messages, setMessages] = useState([
+function AskAI({ user }: UserProps) {
+  const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: "ai",
       text: `Hi ${user?.name?.split(" ")[0] || "there"}! Ask me anything about Bay Area golf courses — conditions, tips, comparisons, tee times, or recommendations. ⛳`,
@@ -144,13 +152,13 @@ function AskAI({ user }) {
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const bottomRef = useRef(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSend = async (e) => {
+  const handleSend = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const question = input.trim();
     if (!question || loading) return;
@@ -175,7 +183,7 @@ function AskAI({ user }) {
     }
   };
 
-  const handleHistorySelect = (question) => {
+  const handleHistorySelect = (question: string) => {
     setInput(question);
   };
 
