@@ -7,10 +7,16 @@ import {
   updateUserRole,
   deleteUser,
   refreshCache,
+  errorMessage,
 } from "../api";
+import type { AdminReview, AdminUser, ReviewStatus, UserType } from "../types";
+
+type Tab = "reviews" | "users" | "cache";
+const TABS: Tab[] = ["reviews", "users", "cache"];
+const STATUS_FILTERS: Array<ReviewStatus | ""> = ["", "approved", "pending", "rejected"];
 
 function AdminDashboard() {
-  const [tab, setTab] = useState("reviews");
+  const [tab, setTab] = useState<Tab>("reviews");
 
   return (
     <div className="page">
@@ -20,7 +26,7 @@ function AdminDashboard() {
       </div>
 
       <div className="admin-tabs">
-        {["reviews", "users", "cache"].map((t) => (
+        {TABS.map((t) => (
           <button
             key={t}
             className={`admin-tab ${tab === t ? "active" : ""}`}
@@ -42,9 +48,9 @@ function AdminDashboard() {
 // Reviews Tab
 // -------------------------
 function ReviewsTab() {
-  const [reviews, setReviews] = useState([]);
+  const [reviews, setReviews] = useState<AdminReview[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState<ReviewStatus | "">("");
 
   const load = () => {
     setLoading(true);
@@ -56,22 +62,22 @@ function ReviewsTab() {
 
   useEffect(() => { load(); }, [statusFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleStatus = async (id, status) => {
+  const handleStatus = async (id: number, status: ReviewStatus) => {
     try {
       await updateReviewStatus(id, status);
       load();
     } catch (err) {
-      alert(err.message);
+      alert(errorMessage(err));
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id: number) => {
     if (!window.confirm("Delete this review?")) return;
     try {
       await deleteReview(id);
       load();
     } catch (err) {
-      alert(err.message);
+      alert(errorMessage(err));
     }
   };
 
@@ -79,7 +85,7 @@ function ReviewsTab() {
     <>
       <div style={{ marginBottom: 16, display: "flex", gap: 8, alignItems: "center" }}>
         <label className="form-label" style={{ marginBottom: 0 }}>Filter:</label>
-        {["", "approved", "pending", "rejected"].map((s) => (
+        {STATUS_FILTERS.map((s) => (
           <button
             key={s || "all"}
             className={`admin-tab ${statusFilter === s ? "active" : ""}`}
@@ -151,7 +157,7 @@ function ReviewsTab() {
 // Users Tab
 // -------------------------
 function UsersTab() {
-  const [users, setUsers] = useState([]);
+  const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = () => {
@@ -164,22 +170,22 @@ function UsersTab() {
 
   useEffect(() => { load(); }, []);
 
-  const handleRole = async (id, user_type) => {
+  const handleRole = async (id: number, user_type: UserType) => {
     try {
       await updateUserRole(id, user_type);
       load();
     } catch (err) {
-      alert(err.message);
+      alert(errorMessage(err));
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id: number) => {
     if (!window.confirm("Delete this user? This cannot be undone.")) return;
     try {
       await deleteUser(id);
       load();
     } catch (err) {
-      alert(err.message);
+      alert(errorMessage(err));
     }
   };
 
@@ -252,7 +258,7 @@ function CacheTab() {
       const data = await refreshCache();
       setMessage(data.message);
     } catch (err) {
-      setError(err.message || "Cache refresh failed");
+      setError(errorMessage(err, "Cache refresh failed"));
     } finally {
       setLoading(false);
     }

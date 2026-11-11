@@ -1,15 +1,16 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { login } from "../api";
+import { errorMessage, login } from "../api";
+import type { SetUserProps } from "../types";
 
-function Login({ setUser }) {
+function Login({ setUser }: SetUserProps) {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
     if (!email || !password) {
@@ -22,7 +23,7 @@ function Login({ setUser }) {
       setUser(userData);
       navigate("/");
     } catch (err) {
-      setError(err.message || "Invalid email or password");
+      setError(errorMessage(err, "Invalid email or password"));
     } finally {
       setLoading(false);
     }

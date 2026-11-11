@@ -1,12 +1,13 @@
 import React from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { logout } from "../api";
+import type { SetUserProps, UserProps } from "../types";
 
-function Navbar({ user, setUser }) {
+function Navbar({ user, setUser }: UserProps & SetUserProps) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const isActive = (path) => location.pathname === path ? "nav-link active" : "nav-link";
+  const isActive = (path: string) => location.pathname === path ? "nav-link active" : "nav-link";
 
   const handleLogout = async () => {
     try {

@@ -2,12 +2,13 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { fetchHotQuestions, recordView } from "../api";
 import { renderAIResponse } from "../components/AIResponse";
+import type { HotQuestion, UserProps } from "../types";
 
-function HotQuestions({ user }) {
-  const [questions, setQuestions] = useState([]);
+function HotQuestions({ user }: UserProps) {
+  const [questions, setQuestions] = useState<HotQuestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [showGate, setShowGate] = useState(false);
-  const [expanded, setExpanded] = useState(null);
+  const [expanded, setExpanded] = useState<number | null>(null);
 
   useEffect(() => {
     fetchHotQuestions()
@@ -19,9 +20,9 @@ function HotQuestions({ user }) {
       .finally(() => setLoading(false));
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const canViewAnswer = (rank) => user || rank <= 3;
+  const canViewAnswer = (rank: number) => user !== null || rank <= 3;
 
-  const handleExpand = (q) => {
+  const handleExpand = (q: HotQuestion) => {
     const isOpening = expanded !== q.rank;
     setExpanded(isOpening ? q.rank : null);
     if (isOpening && canViewAnswer(q.rank)) {

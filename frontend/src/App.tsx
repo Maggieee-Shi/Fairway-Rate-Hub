@@ -13,9 +13,10 @@ import HotQuestions from "./pages/HotQuestions";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 import { fetchCurrentUser } from "./api";
+import type { User } from "./types";
 
 function App() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -50,7 +51,7 @@ function App() {
             path="/register"
             element={user ? <Navigate to="/" replace /> : <Register setUser={setUser} />}
           />
-          <Route path="/courses" element={<CourseList user={user} />} />
+          <Route path="/courses" element={<CourseList />} />
           <Route path="/courses/:id" element={<CourseDetail user={user} />} />
           <Route path="/hot" element={<HotQuestions user={user} />} />
 
@@ -69,7 +70,7 @@ function App() {
             path="/admin"
             element={
               <ProtectedRoute user={user} adminOnly>
-                <AdminDashboard user={user} />
+                <AdminDashboard />
               </ProtectedRoute>
             }
           />

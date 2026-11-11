@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
 import CourseCard from "../components/CourseCard";
 import { fetchCourses } from "../api";
+import type { Course } from "../types";
 
 function CourseList() {
-  const [courses, setCourses] = useState([]);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 

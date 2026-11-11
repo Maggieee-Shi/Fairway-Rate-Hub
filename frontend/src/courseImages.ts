@@ -1,7 +1,7 @@
 // Specific images for each of the 15 seeded Bay Area courses.
 // onError in <img> will hide the image if the URL becomes stale.
 
-const COURSE_IMAGES = {
+const COURSE_IMAGES: Record<string, string> = {
   "tpc harding park":
     "https://tpc.com/hardingpark/wp-content/uploads/sites/47/2016/08/IP-Hero_Harding-park-1-1.jpg",
   "lincoln park golf course":
@@ -34,7 +34,7 @@ const COURSE_IMAGES = {
     "https://www.diablocreekgc.com/images/slideshows/banner_1.jpg",
 };
 
-const FALLBACK_IMAGES = [
+const FALLBACK_IMAGES: string[] = [
   "https://images.unsplash.com/photo-1535131749006-b7f58c99034b?w=800&q=80",
   "https://images.unsplash.com/photo-1587174486073-ae5e5cff23aa?w=800&q=80",
   "https://images.unsplash.com/photo-1592919505780-303950717480?w=800&q=80",
@@ -47,7 +47,7 @@ const FALLBACK_IMAGES = [
  * Look up an image URL by course name (case-insensitive, partial match).
  * Falls back to a generic golf photo via the fallback index.
  */
-export function getCourseImage(name, fallbackIndex = 0) {
+export function getCourseImage(name: string | null | undefined, fallbackIndex = 0): string {
   if (!name) return FALLBACK_IMAGES[fallbackIndex % FALLBACK_IMAGES.length];
   const key = name.toLowerCase().trim();
   if (COURSE_IMAGES[key]) return COURSE_IMAGES[key];
